@@ -1,6 +1,6 @@
 /**
  * Exoid Robotics – Solar quote mailer (Google Apps Script)
- * Sends each quote from the calculator to the client, CCs the office,
+ * Sends each quote from the calculator to the client (with the PDF proposal attached), CCs the office,
  * and logs it to the "Quotes" tab of the Google Sheet this script is attached to.
  *
  * SETUP (about 5 minutes, signed in as the account that should send the emails):
@@ -8,6 +8,8 @@
  * 2. Open Extensions → Apps Script, delete the sample code, paste this file, and save.
  * 3. Click Deploy → New deployment → type "Web app".
  *    Execute as: Me.   Who has access: Anyone.   Click Deploy and approve the permissions.
+ *    UPDATING an existing script: paste the new code, Save, then Deploy → Manage deployments →
+ *    pencil (Edit) → Version: New version → Deploy. The URL stays the same.
  * 4. Copy the Web app URL (ends in /exec). In the calculator, go to Assumptions → Quote email
  *    and paste it into "Google Apps Script URL".
  */
@@ -22,7 +24,11 @@ function doPost(e) {
   const cc = [d.cc, CC_ALWAYS].filter(String).filter((v, i, a) => a.indexOf(v) === i).join(',');
   const html = '<div style="font-family:Arial,sans-serif;font-size:14px;white-space:pre-wrap">' +
                String(d.body).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])) + '</div>';
-  MailApp.sendEmail({ to: d.to, cc: cc, subject: d.subject, body: d.body, htmlBody: html, name: 'Exoid Robotics' });
+  const mail = { to: d.to, cc: cc, subject: d.subject, body: d.body, htmlBody: html, name: 'Exoid Robotics' };
+  if (d.pdfBase64) {
+    mail.attachments = [Utilities.newBlob(Utilities.base64Decode(d.pdfBase64), 'application/pdf', d.pdfName || 'Exoid Solar Proposal.pdf')];
+  }
+  MailApp.sendEmail(mail);
 
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sh = ss.getSheetByName(SHEET_NAME) || ss.insertSheet(SHEET_NAME);

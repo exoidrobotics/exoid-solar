@@ -83,6 +83,7 @@ body.adv tr.tech{display:table-row!important}
 body.adv .hideadv{display:none}
 #btnAdv.on{background:#f2a900;color:#0d2238;border-color:#f2a900}
 #btnAdv .cnt{display:inline-block;min-width:18px;padding:0 5px;margin-left:6px;border-radius:9px;background:#b26a00;color:#fff;font-size:11px}
+.pricenote{margin:10px 0 4px;padding:8px 12px;border:1px solid #f2a900;background:#fff8e6;border-radius:8px;font-weight:700;color:#7a4b00}
 @media print{
   header.top,nav.tabs,.noprint,#tab-input,#tab-settings,#tab-catalog{display:none!important}
   #tab-results{display:block!important}
@@ -832,6 +833,7 @@ function runCalc(){
   if(R.error && !R.inv){ box.innerHTML=`<div class="errbox">${R.error}</div>`; showTab('results'); return; }
   box.innerHTML=renderResults(R); showTab('results'); updateAdvCount();
   document.getElementById('btnPrint').onclick=()=>window.print();
+  document.getElementById('btnPdf').onclick=async()=>{ try{ flash('Preparing PDF…'); const pdf=await makePdf(R); pdf.save(pdfName(R)); flash('PDF downloaded.'); }catch(e){ flash('Could not create the PDF ('+e.message+'). Use Print → Save as PDF instead.'); } };
   document.getElementById('btnEmail').onclick=()=>emailQuote(R);
   document.getElementById('btnCopy').onclick=()=>{ const t=quoteText(R); (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>flash('Summary copied.')).catch(()=>flash('Copy not allowed here. Select the text in the proposal instead.')); };
 }
@@ -866,7 +868,8 @@ function renderResults(R){
   return `
   <div class="card noprint"><div class="row">
     <button class="btn" id="btnEmail">✉ Email quote to client (CC ${set.ccEmail||'—'})</button>
-    <button class="btn sec" id="btnPrint">Print / Save as PDF</button>
+    <button class="btn sec" id="btnPdf">⬇ Download PDF</button>
+    <button class="btn ghost" id="btnPrint">Print</button>
     <button class="btn ghost" id="btnCopy">Copy summary</button>
     <span class="small" id="flashMsg"></span></div>
     <div class="tech">${warn}${notes}</div>
@@ -898,6 +901,7 @@ function renderResults(R){
       <div class="kpi"><div class="v">${peso(f.net)}</div><div class="l">Net savings over ${set.years} years</div></div>
       <div class="kpi"><div class="v">${Math.round(f.roi)}%</div><div class="l">ROI over ${set.years} years</div></div>
     </div>
+    <div class="pricenote">⚠ Estimated price only, final price after full inspection.</div>
     <p class="small">${R.sys==='offgrid'?`Replaces ≈ ${peso(f.billBefore)}/month of grid-equivalent electricity (year 1).`:`Monthly bill now ≈ ${peso(f.billBefore)} → after solar ≈ ${peso(f.billAfter)} (year 1).`} Rate ₱${r2(R.rate)}/kWh${R.rateFromBill?' (from the client\'s bills)':''}, rising ${set.escal}%/yr; panels lose ${set.degr}%/yr.
     ${f.exportAllowed?'Exported energy ('+r1(f.d1.exported)+' kWh/day) is credited at ₱'+r2(num(set.exportRate))+'/kWh.':(R.sys!=='offgrid' && f.d1.curtailed>0.1?'Zero-export: ~'+r1(f.d1.curtailed)+' kWh/day of surplus solar is not used.':'')}</p>
     <div class="diagram" style="padding:8px">${chart}</div>
@@ -921,7 +925,7 @@ function renderResults(R){
       ${S.method==='schedule'?'<li>Load energy = watts × qty × hours on × energy % (inverter aircons/fridges use less energy than non-inverter units; editable per load).</li>':''}<li>Peak sun hours ${set.psh} h/day, performance ratio ${set.pr}. Daily consumption ${r1(L.daily)} kWh, of which ${Math.round(L.dayShare*100)}% is daytime.</li>
       ${R.bat?`<li>Battery usable depth of discharge ${set.dod}%, round-trip efficiency ${set.eff}%. Sized for ${R.sys==='offgrid'?S.off.autonomy+' day(s) of autonomy':(S.hyb.basis==='night'?'night-time use of backed-up loads':S.hyb.outageH+' h outage at '+r1(R.backupKWused)+' kW')} (needs ${r1(R.batUsableReq)} kWh usable).</li>`:''}
       ${R.sys!=='offgrid'?'<li>Grid-tie and hybrid systems need a distribution utility net-metering application (ERC rules, up to 100 kW) and an electrical permit. Install according to the Philippine Electrical Code and the manufacturers\' manuals.</li>':'<li>Off-grid systems need an electrical permit. Install according to the Philippine Electrical Code and the manufacturers\' manuals.</li>'}
-      <li>This is a preliminary estimate. Final quantities, layout and price are confirmed after a site survey (roof condition, shading, orientation, panel board).</li>
+      <li><b>Estimated price only, final price after full inspection.</b> This is a preliminary estimate. Final quantities, layout and price are confirmed after a site survey (roof condition, shading, orientation, panel board).</li>
     </ul>
   </div>`;
 }
@@ -1002,7 +1006,7 @@ function quoteText(R){
     `• Estimated net savings over ${yrs} years: ${peso(f.net)}`,
     `• Solar covers about ${Math.round(f.offset*100)}% of your electricity use`,
     perk,
-    ``, `YOUR PROPOSED SYSTEM — ${peso(f.price)}`,
+    ``, `YOUR PROPOSED SYSTEM — ${peso(f.price)} (estimated)`,
     `• ${R.panels} × ${R.panel.brand} ${R.panel.model.replace(/\s*\(.*\)/,'')} solar panels (${R.panel.wp} W each)`,
     `• ${R.invN} × ${R.inv.brand} ${R.inv.model} ${CAT_LABEL[R.sys].toLowerCase()} inverter${R.invN>1?'s':''} (${r1(R.invN*R.inv.kw)} kW${R.invN>1?' total':''})`];
   if(R.bat) L1.push(`• ${R.bat.n} × ${R.bat.b.brand} ${R.bat.b.kwh} kWh LiFePO4 batter${R.bat.n>1?'ies':'y'} (${r1(R.bat.kwh)} kWh total storage)`);
@@ -1012,26 +1016,92 @@ function quoteText(R){
     `1. Reply to this email or call us to schedule a site survey.`,
     `2. We'll confirm the final design and price after checking your roof, shading and electrical panel.`,
     `3. Once approved, we schedule the installation${R.sys!=='offgrid'?' and prepare the net-metering requirements with your utility':''}.`,
-    ``, `This is a preliminary estimate based on the information you provided. Final quantities and price will be confirmed after the site survey.`,
+    ``, `Your full proposal is attached as a PDF.`, ``, `Estimated price only, final price after full inspection. This quote is based on the information you provided; final quantities and price will be confirmed after the site survey.`,
     ``, `We'd be glad to answer any questions${first?', '+first:''}.`,
     ``, `Warm regards,`, ``, ...sig);
   return L1.join('\n');
 }
-function emailQuote(R){
+/* ---------------- Proposal PDF ---------------- */
+const PDF_DISCLAIMER = 'Estimated price only, final price after full inspection.';
+let _pdfLib=null;
+function loadScript(src){ return new Promise((res,rej)=>{ const sc=document.createElement('script'); sc.src=src; sc.onload=()=>res(); sc.onerror=()=>rej(new Error('could not load '+src)); document.head.appendChild(sc); }); }
+function loadPdfLib(){ if(window.html2canvas && window.jspdf) return Promise.resolve();
+  if(!_pdfLib) _pdfLib=Promise.all([loadScript('vendor/html2canvas.min.js'), loadScript('vendor/jspdf.umd.min.js')]).catch(e=>{ _pdfLib=null; throw e; });
+  return _pdfLib; }
+function pdfName(R){ return ('Exoid Solar Proposal - '+(S.client.name||'Client')+' - '+r2(R.kWp)+' kWp.pdf').replace(/[\\/:*?"<>|]/g,''); }
+async function makePdf(R){
+  await loadPdfLib();
+  const src=document.querySelector('#results .prop'); if(!src) throw new Error('no proposal on screen');
+  const CW=700;                                   // content width in CSS px (= 186 mm on A4 with 12 mm margins)
+  const el=src.cloneNode(true);
+  el.querySelectorAll('.tech,.noprint,.hideadv').forEach(n=>n.remove());   // client copy: no technical tables
+  el.style.cssText='width:'+CW+'px;box-sizing:border-box;background:#fff;border:0;padding:0;margin:0;font-size:12.5px';
+  el.querySelectorAll('.kpis').forEach(k=>k.style.gridTemplateColumns='repeat(3,1fr)');
+  el.querySelectorAll('.diagram').forEach(d=>{ d.style.overflow='visible'; });
+  el.querySelectorAll('svg').forEach(sv=>{ const vb=(sv.getAttribute('viewBox')||'').split(/\s+/).map(Number);
+    if(vb.length===4 && vb[2]>0){ const W=CW-20, H=Math.round(W*vb[3]/vb[2]); sv.setAttribute('width',W); sv.setAttribute('height',H); sv.style.width=W+'px'; sv.style.height=H+'px'; sv.style.minWidth='0'; } });
+  const host=document.createElement('div'); host.style.cssText='position:absolute;left:-10000px;top:0;width:'+CW+'px;background:#fff';
+  host.appendChild(el); document.body.appendChild(host);
+  let canvas, breaks=[], total;
+  try{
+    const top0=el.getBoundingClientRect().top; total=Math.ceil(Math.max(el.scrollHeight, el.getBoundingClientRect().height))+120; // margin: canvas text can wrap slightly longer than the DOM
+    // safe page-break points = top edge of blocks we don't want to split
+    el.querySelectorAll('h3, .kpis, .kpi, tr, .diagram, li, .pricenote, p, .head, .grid').forEach(n=>{ breaks.push(Math.floor(n.getBoundingClientRect().top-top0)); });
+    canvas=await html2canvas(el,{scale:2, backgroundColor:'#ffffff', useCORS:true, windowWidth:CW, scrollX:0, scrollY:0, width:CW, height:total});
+  } finally { host.remove(); }
+  breaks=[...new Set(breaks)].filter(y=>y>0).sort((a,b)=>a-b);
+  const { jsPDF } = window.jspdf;
+  const pdf=new jsPDF({unit:'mm', format:'a4', orientation:'portrait'});
+  const PW=210, PH=297, M=12, MB=16, usableW=PW-2*M, usableH=PH-M-MB;
+  const pxPerMm=CW/usableW, pageH=Math.floor(usableH*pxPerMm), k=canvas.width/CW;
+  const pages=[]; let start=0;
+  while(start<total-2){
+    let end=start+pageH;
+    if(end<total){ const cand=breaks.filter(y=>y>start+pageH*0.4 && y<=end); if(cand.length) end=cand[cand.length-1]; }
+    else end=total;
+    pages.push([start,end]); start=end;
+  }
+  pages.forEach(([a,b],i)=>{
+    if(i) pdf.addPage();
+    const slice=document.createElement('canvas'); slice.width=canvas.width; slice.height=Math.ceil((b-a)*k);
+    const ctx=slice.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,slice.width,slice.height);
+    ctx.drawImage(canvas,0,Math.floor(a*k),canvas.width,slice.height,0,0,slice.width,slice.height);
+    pdf.addImage(slice.toDataURL('image/jpeg',0.9),'JPEG',M,M,usableW,(b-a)/pxPerMm);
+  });
+  const n=pdf.internal.getNumberOfPages();
+  for(let i=1;i<=n;i++){ pdf.setPage(i); pdf.setFontSize(8.5); pdf.setTextColor(122,75,0);
+    pdf.text(PDF_DISCLAIMER, M, PH-8); pdf.setTextColor(110,120,130);
+    pdf.text('Exoid Robotics · www.exoidrobotics.com · Page '+i+' of '+n, PW-M, PH-8, {align:'right'}); }
+  return pdf;
+}
+
+/* ---------------- Quote email ---------------- */
+async function emailQuote(R){
   const to=S.client.email, cc=S.set.ccEmail||'', subj=quoteSubject(R);
   const body=quoteText(R);
   const hook = S.set.webhook || store.sget('exoid_mail') || '';
-  if(hook){
-    fetch(hook,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
-      body:JSON.stringify({to,cc,subject:subj,body,client:S.client,installer:SESSION_USER,kWp:R.kWp,system:R.sys,price:Math.round(R.fin.price),
-        panels:R.panels,inverter:R.invN+' x '+R.inv.model,battery:R.bat?R.bat.n+' x '+R.bat.b.model:'none',payback:R.fin.payback})})
-      .then(()=>flash('Quote sent to '+to+' (CC '+cc+').')).catch(()=>{ flash('Automatic send failed; opening your email app instead.'); openMail(to,cc,subj,body); });
-  } else openMail(to,cc,subj,body);
+  const btn=document.getElementById('btnEmail'); btn.disabled=true;
+  let pdf=null;
+  try{ flash('Preparing PDF…'); pdf=await makePdf(R); }catch(e){ pdf=null; }
+  try{
+    if(hook){
+      const payload={to,cc,subject:subj,body,client:S.client,installer:SESSION_USER,kWp:R.kWp,system:R.sys,price:Math.round(R.fin.price),
+        panels:R.panels,inverter:R.invN+' x '+R.inv.model,battery:R.bat?R.bat.n+' x '+R.bat.b.model:'none',payback:R.fin.payback};
+      if(pdf){ payload.pdfName=pdfName(R); payload.pdfBase64=pdf.output('datauristring').split(',')[1]; }
+      flash('Sending…');
+      await fetch(hook,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
+      flash('Quote sent to '+to+' (CC '+cc+')'+(pdf?' with the PDF proposal attached.':'. The PDF could not be created, so it was sent without an attachment.'));
+    } else {
+      if(pdf) pdf.save(pdfName(R));
+      openMail(to,cc,subj,body,!!pdf);
+    }
+  }catch(e){ flash('Automatic send failed; opening your email app instead.'); if(pdf) pdf.save(pdfName(R)); openMail(to,cc,subj,body,!!pdf); }
+  finally{ btn.disabled=false; }
 }
-function openMail(to,cc,subj,body){
+function openMail(to,cc,subj,body,pdfSaved){
   const url=`mailto:${encodeURIComponent(to)}?cc=${encodeURIComponent(cc)}&subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
   const w=window.open(url,'_blank'); if(!w){ try{ window.top.location.href=url; }catch(e){ location.href=url; } }
-  flash('Email draft opened. Attach the PDF from "Print / Save as PDF" if you need one.');
+  flash(pdfSaved?'Email draft opened and the PDF was downloaded. Attach it to the email before sending.':'Email draft opened. Use Download PDF and attach it before sending.');
 }
 
 /* ---------------- Boot ---------------- */
