@@ -202,7 +202,7 @@ body.adv .hideadv{display:none}
     <svg width="26" height="26" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="7" fill="#f2a900"/><g stroke="#f2a900" stroke-width="2.4" stroke-linecap="round"><path d="M17 2v5M17 27v5M2 17h5M27 17h5M6.4 6.4l3.5 3.5M24.1 24.1l3.5 3.5M6.4 27.6l3.5-3.5M24.1 9.9l3.5-3.5"/></g></svg>
     <div class="title">Exoid <span>Solar</span></div>
     <div class="sp"></div>
-    <div class="who"><span id="whoLbl"></span><div style="font-size:10px;opacity:.6">Version 2026-11-18 19:30</div></div>
+    <div class="who"><span id="whoLbl"></span><div style="font-size:10px;opacity:.6">Version 2026-11-18 19:45</div></div>
     <button class="btn ghost sm" id="btnFull" title="Use the whole screen (Esc to exit)">⛶ Full screen</button>
     <button class="btn ghost sm" id="btnAdv" title="Show or hide technical details (wiring, protection, string voltages, installer notes)">⚙ Advanced<span class="cnt hidden" id="advCnt"></span></button>
     <button class="btn ghost sm" id="btnNew">+ New proposal</button>
@@ -413,7 +413,7 @@ body.adv .hideadv{display:none}
       <div class="grid g2">
         <div><label>CC every quote to (visible to the client, usually blank)</label><input data-k="set.ccEmail"></div>
         <div><label>BCC every quote to (hidden copies for the team, comma-separated)</label><input data-k="set.bccEmail"></div>
-        <div class="testonly" style="grid-column:1/-1"><label>Test recipient email (test account only). Proposals go only here: not to the client, CC or team copies</label><input type="email" data-k="set.testEmail" placeholder="you@example.com"></div>
+        <div class="testonly" style="grid-column:1/-1"><label>Test recipient email (test account only). Send to Email opens a draft to this address only, with the PDF downloaded to attach; nothing goes to the client, CC or team</label><input type="email" data-k="set.testEmail" placeholder="you@example.com"></div>
         <div><label>Signature — name (blank = "Prepared by")</label><input data-k="set.sigName"></div>
         <div><label>Signature — title</label><input data-k="set.sigTitle"></div>
         <div><label>Signature — mobile / phone</label><input data-k="set.sigPhone" placeholder="e.g. 0917 123 4567"></div>
@@ -510,8 +510,9 @@ const USERS = {
   '100EXD': {name:'Engr. Michelangelo Barroga', hash:'bdfad972549c3cba19ef0cc8076ec59999dbe2e6da244e78daad80194073a265'},
   '100RJT': {name:'Engr. Riego Jeremy Terte',   hash:'c758a1dadcba4407f3208728fe40202d1f789e024129a336371b59cf9b07f09b'},
   '100MAB': {name:'Engr. Mark Aaron Barroga',   hash:'b791523d47192653929bb31af8cef1b905264ad85eff189b8267fdf1d2fa50a3'},
-  // test account: proposals are emailed only to the "Test recipient" in Assumptions; no client, CC or team copies
-  '100TST': {name:'Test Account',               hash:'0de41d158c0e70b04f68800b368600902e98968cf6f3993fe2a0b020554f0ae4', test:true}
+  // test account (own simple password): never unlocks the shared mailer; emails open as a draft to the Assumptions "Test recipient" only;
+  // proposals stay on this device
+  '100TST': {name:'Test Account',               hash:'130989536526861864a573d24945fa4da6d57938d18c5b19b0c29e5c68326497', test:true}
 };
 const PBKDF2_ITER = 150000;
 // Quote-mailer (Apps Script) URL, AES-256-GCM encrypted with a key derived from the shared installer password.
@@ -551,7 +552,7 @@ document.getElementById('loginForm').addEventListener('submit', async e=>{
     const u=USERS[code];
     if(u && toHex(await pbkdf2Bits(secret,'exoid-login-v2'))===u.hash){
       store.sset('exoid_auth',code);
-      const url=await unlockMailer(pw); if(url) store.sset('exoid_mail',url);
+      store.sdel('exoid_mail'); if(!(USERS[code]&&USERS[code].test)){ const url=await unlockMailer(pw); if(url) store.sset('exoid_mail',url); }
       showApp(code);
     } else err.textContent='Incorrect installer code or password.';
   } finally { btn.disabled=false; btn.textContent='Log in'; }
@@ -1273,7 +1274,7 @@ function renderCatalog(){
 function findCat(id){ for(const k of ['inverters','batteries','panels']){ const x=CATALOG[k].find(i=>i.id===id); if(x) return x; } return null; }
 let CAT_SHARED=null; // true = synced with the shared file, false = this device only
 function catStatusText(){ return CAT_SHARED===true?'✅ Changes are shared with all installers.':CAT_SHARED===false?'⚠ Changes are saved on this device only. Update the Apps Script to share them.':'Loading shared catalog…'; }
-function mailerURL(){ return S.set.webhook || store.sget('exoid_mail') || ''; }
+function mailerURL(){ if(SESSION_TEST) return ''; return S.set.webhook || store.sget('exoid_mail') || ''; }
 async function loadSharedCatalog(){
   const u=mailerURL(); if(!u){ CAT_SHARED=false; return; }
   try{ const r=await fetch(u+(u.includes('?')?'&':'?')+'action=catalog'); const j=await r.json();
@@ -1766,7 +1767,7 @@ async function emailQuote(R){
     if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)){ flash('Test account: enter a Test recipient email in Assumptions → Quote email first.'); showTab('settings'); const ti=document.querySelector('[data-k="set.testEmail"]'); if(ti){ ti.scrollIntoView({block:'center'}); ti.focus(); } return; }
   }
   const body=quoteText(R);
-  const hook = S.set.webhook || store.sget('exoid_mail') || '';
+  const hook = SESSION_TEST ? '' : (S.set.webhook || store.sget('exoid_mail') || '');
   const btn=document.getElementById('btnEmail'); btn.disabled=true;
   let pdf=null;
   try{ flash('Preparing PDF…'); pdf=await makePdf(R); }catch(e){ pdf=null; }
