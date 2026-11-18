@@ -123,6 +123,7 @@ body.adv .hideadv{display:none}
     <div class="title">Exoid Solar Sizing &amp; Proposal</div>
     <div class="sp"></div>
     <div class="who" id="whoLbl"></div>
+    <button class="btn ghost sm" style="color:#fff;border-color:#40566e" id="btnFull" title="Use the whole screen (Esc to exit)">⛶ Full screen</button>
     <button class="btn ghost sm" style="color:#fff;border-color:#40566e" id="btnAdv" title="Show or hide technical details (wiring, protection, string voltages, installer notes)">⚙ Advanced<span class="cnt hidden" id="advCnt"></span></button>
     <button class="btn ghost sm" style="color:#fff;border-color:#40566e" id="btnNew">+ New proposal</button>
     <button class="btn ghost sm" style="color:#fff;border-color:#40566e" id="btnLogout">Log out</button>
@@ -784,6 +785,8 @@ function init(){
   // tabs
   document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
   setAdv(store.get('exoid_adv')==='1');
+  document.getElementById('btnFull').onclick=toggleFullscreen;
+  document.addEventListener('fullscreenchange',()=>{ document.getElementById('btnFull').textContent=document.fullscreenElement?'✕ Exit full screen':'⛶ Full screen'; });
   document.getElementById('btnAdv').onclick=()=>setAdv(!document.body.classList.contains('adv'));
   // equipment selects
   fillEquipSelects();
@@ -819,6 +822,15 @@ function fillUtilities(){
 } // no blocking dialogs inside the embed
 function setAdv(on){ document.body.classList.toggle('adv',on); const b=document.getElementById('btnAdv'); if(b) b.classList.toggle('on',on); store.set('exoid_adv',on?'1':'0'); }
 function updateAdvCount(){ const c=document.getElementById('advCnt'); const n=LAST?(LAST.warnings.length):0; c.textContent=n; c.classList.toggle('hidden',!n); c.title=n+' installer warning(s)'; }
+// Full screen: true full screen when the embedding page allows it; otherwise open the tool in its own tab
+const TOOL_URL='https://exoidrobotics.github.io/exoid-solar/';
+async function toggleFullscreen(){
+  const d=document;
+  if(d.fullscreenElement){ try{ await d.exitFullscreen(); }catch(e){} return; }
+  if(d.fullscreenEnabled && d.documentElement.requestFullscreen){ try{ await d.documentElement.requestFullscreen(); return; }catch(e){} }
+  const w=window.open(location.protocol==='file:'?location.href:TOOL_URL,'_blank');
+  if(!w) flash('Allow pop-ups for this site, or open '+TOOL_URL+' directly.');
+}
 function showTab(t){ document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
   ['proposals','input','results','settings','catalog'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t)); window.scrollTo(0,0); }
 function bindInputs(root){
