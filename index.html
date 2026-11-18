@@ -253,9 +253,12 @@ body.adv .hideadv{display:none}
   <section id="tab-settings" class="hidden">
     <div class="card">
       <h2>Pricing &amp; ROI</h2>
+      <p class="small pm-item" style="margin-top:0"><b>Itemized:</b> price = kWp × the rate below (panels, mounting, PV and AC wiring, breakers, SPDs, labor) + each inverter's and battery's selling price from the <b>Equipment catalog</b> + net metering. Set your real selling prices there with <b>Edit</b>; the built-in prices are market estimates.</p>
       <div class="grid g4">
-        <div><label>Price per kWp of PV (₱)</label><input type="number" data-k="set.pricePerKW"></div>
-        <div><label>Battery adder per kWh (₱, 0 = included)</label><input type="number" data-k="set.batAdder"></div>
+        <div><label>Pricing method</label><select data-k="set.priceMode" id="selPriceMode"><option value="itemized">Itemized (recommended)</option><option value="flat">Flat ₱ per kWp</option></select></div>
+        <div class="pm-item"><label>Panels, mounting, wiring, protection &amp; labor (₱ per kWp)</label><input type="number" data-k="set.pvPerKW"></div>
+        <div class="pm-flat"><label>Flat price per kWp of PV (₱)</label><input type="number" data-k="set.pricePerKW"></div>
+        <div class="pm-flat"><label>Battery adder per kWh (₱, 0 = included)</label><input type="number" data-k="set.batAdder"></div>
         <div><label>Electricity rate (₱/kWh)</label><input type="number" step="0.01" data-k="set.rate"></div>
         <div><label>Export credit (₱/kWh, net-metering)</label><input type="number" step="0.01" data-k="set.exportRate"></div>
         <div><label>Rate escalation per year (%)</label><input type="number" step="0.5" data-k="set.escal"></div>
@@ -330,29 +333,29 @@ const IMG_SPE='data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAQDAwMDAg
 const CATALOG_BASE = {
   inverters: [
     // ---- Growatt SPM series: single-phase 230V hybrid, 48V low-voltage battery, grid-interactive ----
-    {id:'SPM3000', brand:'Growatt', model:'SPM 3000TL-HU', type:'hybrid', kw:3,  surge:1.0, maxPV:4500,  vdcMax:600, mpptMin:150, mpptMax:550, startV:150, mppt:[22,22], battI:70,  parallel:6, img:IMG_SPM, verify:'DC voltage window and MPPT current taken from SPM 6000TL-HU datasheet (same series).', url:'https://en.growatt.com/'},
-    {id:'SPM4000', brand:'Growatt', model:'SPM 4000TL-HU', type:'hybrid', kw:4,  surge:1.0, maxPV:6000,  vdcMax:600, mpptMin:150, mpptMax:550, startV:150, mppt:[22,22], battI:null,parallel:6, img:IMG_SPM, verify:'DC limits taken from SPM 6000TL-HU datasheet (same series).', url:'https://en.growatt.com/'},
-    {id:'SPM5000', brand:'Growatt', model:'SPM 5000TL-HU', type:'hybrid', kw:5,  surge:1.0, maxPV:7500,  vdcMax:600, mpptMin:150, mpptMax:550, startV:150, mppt:[22,22], battI:null,parallel:6, img:IMG_SPM, verify:'DC limits taken from SPM 6000TL-HU datasheet (same series).', url:'https://en.growatt.com/'},
-    {id:'SPM6000', brand:'Growatt', model:'SPM 6000TL-HU', type:'hybrid', kw:6,  surge:1.0, maxPV:9000,  vdcMax:600, mpptMin:150, mpptMax:550, startV:150, mppt:[22,22], battI:140, parallel:6, img:IMG_SPM, verify:'', url:'https://cdn.enf.com.cn/z/pp/2024/11/cn5tcai97n036llj/spm-6000tl-hu-datasheet-en-202408.pdf'},
-    {id:'SPM8000', brand:'Growatt', model:'SPM 8000TL-HU', type:'hybrid', kw:8,  surge:1.0, maxPV:16000, vdcMax:600, mpptMin:150, mpptMax:500, startV:150, mppt:[16,16,32], battI:165, parallel:6, img:IMG_SPM, verify:'', url:'https://amonraenergy.xt.ht/wp-content/uploads/2025/02/SPM-8000TL-HU.pdf'},
-    {id:'SPM10000',brand:'Growatt', model:'SPM 10000TL-HU',type:'hybrid', kw:10, surge:1.0, maxPV:20000, vdcMax:600, mpptMin:150, mpptMax:550, startV:150, mppt:[16,16,32], battI:200, parallel:6, img:IMG_SPM, verify:'', url:'https://cdn.estg.eu/p/1/b/4/a/1b4aec53dd63fdabc965f400f0fd9ad88b2bbcd7_Growatt_SPM_TL_HU_Datasheet.pdf'},
+    {id:'SPM3000', price:60000, brand:'Growatt', model:'SPM 3000TL-HU', type:'hybrid', kw:3,  surge:1.0, maxPV:4500,  vdcMax:600, mpptMin:150, mpptMax:550, startV:150, mppt:[22,22], battI:70,  parallel:6, img:IMG_SPM, verify:'DC voltage window and MPPT current taken from SPM 6000TL-HU datasheet (same series).', url:'https://en.growatt.com/'},
+    {id:'SPM4000', price:65000, brand:'Growatt', model:'SPM 4000TL-HU', type:'hybrid', kw:4,  surge:1.0, maxPV:6000,  vdcMax:600, mpptMin:150, mpptMax:550, startV:150, mppt:[22,22], battI:null,parallel:6, img:IMG_SPM, verify:'DC limits taken from SPM 6000TL-HU datasheet (same series).', url:'https://en.growatt.com/'},
+    {id:'SPM5000', price:72000, brand:'Growatt', model:'SPM 5000TL-HU', type:'hybrid', kw:5,  surge:1.0, maxPV:7500,  vdcMax:600, mpptMin:150, mpptMax:550, startV:150, mppt:[22,22], battI:null,parallel:6, img:IMG_SPM, verify:'DC limits taken from SPM 6000TL-HU datasheet (same series).', url:'https://en.growatt.com/'},
+    {id:'SPM6000', price:80000, brand:'Growatt', model:'SPM 6000TL-HU', type:'hybrid', kw:6,  surge:1.0, maxPV:9000,  vdcMax:600, mpptMin:150, mpptMax:550, startV:150, mppt:[22,22], battI:140, parallel:6, img:IMG_SPM, verify:'', url:'https://cdn.enf.com.cn/z/pp/2024/11/cn5tcai97n036llj/spm-6000tl-hu-datasheet-en-202408.pdf'},
+    {id:'SPM8000', price:120000, brand:'Growatt', model:'SPM 8000TL-HU', type:'hybrid', kw:8,  surge:1.0, maxPV:16000, vdcMax:600, mpptMin:150, mpptMax:500, startV:150, mppt:[16,16,32], battI:165, parallel:6, img:IMG_SPM, verify:'', url:'https://amonraenergy.xt.ht/wp-content/uploads/2025/02/SPM-8000TL-HU.pdf'},
+    {id:'SPM10000', price:140000,brand:'Growatt', model:'SPM 10000TL-HU',type:'hybrid', kw:10, surge:1.0, maxPV:20000, vdcMax:600, mpptMin:150, mpptMax:550, startV:150, mppt:[16,16,32], battI:200, parallel:6, img:IMG_SPM, verify:'', url:'https://cdn.estg.eu/p/1/b/4/a/1b4aec53dd63fdabc965f400f0fd9ad88b2bbcd7_Growatt_SPM_TL_HU_Datasheet.pdf'},
     // ---- Growatt SPF series: off-grid 230V, 48V battery, built-in transfer switch, no export ----
-    {id:'SPF3500', brand:'Growatt', model:'SPF 3500 ES',      type:'offgrid', kw:3.5, surge:2.0, maxPV:4500, vdcMax:450, mpptMin:120, mpptMax:430, startV:120, mppt:[18], chargeA:80,  parallel:6, img:'', verify:'MPPT current limit is the 18 A max PV input (Isc) on the certification record.', url:'https://cdn.enf.com.cn/z/pp/2023/8/3st2suz7ml7joq/SPF-3500-5000-ES-Datasheet.pdf'},
-    {id:'SPF5000', brand:'Growatt', model:'SPF 5000 ES',      type:'offgrid', kw:5,   surge:2.0, maxPV:6000, vdcMax:450, mpptMin:120, mpptMax:430, startV:120, mppt:[18], chargeA:100, parallel:6, img:'', verify:'MPPT current limit assumed same as SPF 3500 ES (18 A).', url:'https://cdn.enf.com.cn/z/pp/2023/8/3st2suz7ml7joq/SPF-3500-5000-ES-Datasheet.pdf'},
-    {id:'SPF6000', brand:'Growatt', model:'SPF 6000 ES Plus', type:'offgrid', kw:6,   surge:2.0, maxPV:8000, vdcMax:500, mpptMin:120, mpptMax:450, startV:120, mppt:[16,16], chargeA:100, parallel:6, img:'', verify:'', url:'https://aurinkosahkotukku.fi/wp-content/uploads/2025/01/SPF-6000-ES-Plus.cdr_.pdf'},
+    {id:'SPF3500', price:32000, brand:'Growatt', model:'SPF 3500 ES',      type:'offgrid', kw:3.5, surge:2.0, maxPV:4500, vdcMax:450, mpptMin:120, mpptMax:430, startV:120, mppt:[18], chargeA:80,  parallel:6, img:'', verify:'MPPT current limit is the 18 A max PV input (Isc) on the certification record.', url:'https://cdn.enf.com.cn/z/pp/2023/8/3st2suz7ml7joq/SPF-3500-5000-ES-Datasheet.pdf'},
+    {id:'SPF5000', price:40000, brand:'Growatt', model:'SPF 5000 ES',      type:'offgrid', kw:5,   surge:2.0, maxPV:6000, vdcMax:450, mpptMin:120, mpptMax:430, startV:120, mppt:[18], chargeA:100, parallel:6, img:'', verify:'MPPT current limit assumed same as SPF 3500 ES (18 A).', url:'https://cdn.enf.com.cn/z/pp/2023/8/3st2suz7ml7joq/SPF-3500-5000-ES-Datasheet.pdf'},
+    {id:'SPF6000', price:52000, brand:'Growatt', model:'SPF 6000 ES Plus', type:'offgrid', kw:6,   surge:2.0, maxPV:8000, vdcMax:500, mpptMin:120, mpptMax:450, startV:120, mppt:[16,16], chargeA:100, parallel:6, img:'', verify:'', url:'https://aurinkosahkotukku.fi/wp-content/uploads/2025/01/SPF-6000-ES-Plus.cdr_.pdf'},
     // ---- Growatt SPE ES: 230V hybrid, 48V battery, also usable off-grid; dual output ----
-    {id:'SPE8000',  brand:'Growatt', model:'SPE 8000 ES',  type:'hybrid', alsoOffgrid:true, kw:8,  surge:1.0, maxPV:10000, vdcMax:550, mpptMin:60, mpptMax:480, startV:120, mppt:[27,27], battI:200, chargeA:190, parallel:6, img:IMG_SPE, verify:'Parallel count and surge rating not on the datasheet; confirm with Growatt.', url:'https://offgridtec.com/media/product_attachements/Growatt_SPE_8000-12000_ES_DataSheet.pdf'},
-    {id:'SPE10000', brand:'Growatt', model:'SPE 10000 ES', type:'hybrid', alsoOffgrid:true, kw:10, surge:1.0, maxPV:12500, vdcMax:550, mpptMin:60, mpptMax:480, startV:120, mppt:[27,27], battI:240, chargeA:220, parallel:6, img:IMG_SPE, verify:'Parallel count and surge rating not on the datasheet; confirm with Growatt.', url:'https://offgridtec.com/media/product_attachements/Growatt_SPE_8000-12000_ES_DataSheet.pdf'},
-    {id:'SPE12000', brand:'Growatt', model:'SPE 12000 ES', type:'hybrid', alsoOffgrid:true, kw:12, surge:1.0, maxPV:15000, vdcMax:550, mpptMin:60, mpptMax:480, startV:120, mppt:[27,27], battI:280, chargeA:250, parallel:6, img:IMG_SPE, verify:'Parallel count and surge rating not on the datasheet; confirm with Growatt.', url:'https://offgridtec.com/media/product_attachements/Growatt_SPE_8000-12000_ES_DataSheet.pdf'},
+    {id:'SPE8000', price:85000,  brand:'Growatt', model:'SPE 8000 ES',  type:'hybrid', alsoOffgrid:true, kw:8,  surge:1.0, maxPV:10000, vdcMax:550, mpptMin:60, mpptMax:480, startV:120, mppt:[27,27], battI:200, chargeA:190, parallel:6, img:IMG_SPE, verify:'Parallel count and surge rating not on the datasheet; confirm with Growatt.', url:'https://offgridtec.com/media/product_attachements/Growatt_SPE_8000-12000_ES_DataSheet.pdf'},
+    {id:'SPE10000', price:100000, brand:'Growatt', model:'SPE 10000 ES', type:'hybrid', alsoOffgrid:true, kw:10, surge:1.0, maxPV:12500, vdcMax:550, mpptMin:60, mpptMax:480, startV:120, mppt:[27,27], battI:240, chargeA:220, parallel:6, img:IMG_SPE, verify:'Parallel count and surge rating not on the datasheet; confirm with Growatt.', url:'https://offgridtec.com/media/product_attachements/Growatt_SPE_8000-12000_ES_DataSheet.pdf'},
+    {id:'SPE12000', price:115000, brand:'Growatt', model:'SPE 12000 ES', type:'hybrid', alsoOffgrid:true, kw:12, surge:1.0, maxPV:15000, vdcMax:550, mpptMin:60, mpptMax:480, startV:120, mppt:[27,27], battI:280, chargeA:250, parallel:6, img:IMG_SPE, verify:'Parallel count and surge rating not on the datasheet; confirm with Growatt.', url:'https://offgridtec.com/media/product_attachements/Growatt_SPE_8000-12000_ES_DataSheet.pdf'},
     // ---- Growatt MIN TL-X: single-phase grid-tie, no battery ----
-    {id:'MIN3000', brand:'Growatt', model:'MIN 3000TL-X', type:'gridtie', kw:3, surge:0, maxPV:4200, vdcMax:500, mpptMin:80, mpptMax:500, startV:100, mppt:[12.5,12.5], parallel:20, img:'', verify:'Newer units accept 13.5 A per MPPT; 12.5 A used to be safe.', url:'https://cdn.shopify.com/s/files/1/0259/7486/5967/files/MIN_2.5-6K_TL-X.pdf'},
-    {id:'MIN5000', brand:'Growatt', model:'MIN 5000TL-X', type:'gridtie', kw:5, surge:0, maxPV:7000, vdcMax:550, mpptMin:80, mpptMax:550, startV:100, mppt:[12.5,12.5], parallel:20, img:'', verify:'Newer units accept 13.5 A per MPPT; 12.5 A used to be safe.', url:'https://cdn.shopify.com/s/files/1/0259/7486/5967/files/MIN_2.5-6K_TL-X.pdf'},
-    {id:'MIN6000', brand:'Growatt', model:'MIN 6000TL-X', type:'gridtie', kw:6, surge:0, maxPV:8100, vdcMax:550, mpptMin:80, mpptMax:550, startV:100, mppt:[12.5,12.5], parallel:20, img:'', verify:'Newer units accept 13.5 A per MPPT; 12.5 A used to be safe.', url:'https://cdn.shopify.com/s/files/1/0259/7486/5967/files/MIN_2.5-6K_TL-X.pdf'}
+    {id:'MIN3000', price:32000, brand:'Growatt', model:'MIN 3000TL-X', type:'gridtie', kw:3, surge:0, maxPV:4200, vdcMax:500, mpptMin:80, mpptMax:500, startV:100, mppt:[12.5,12.5], parallel:20, img:'', verify:'Newer units accept 13.5 A per MPPT; 12.5 A used to be safe.', url:'https://cdn.shopify.com/s/files/1/0259/7486/5967/files/MIN_2.5-6K_TL-X.pdf'},
+    {id:'MIN5000', price:40000, brand:'Growatt', model:'MIN 5000TL-X', type:'gridtie', kw:5, surge:0, maxPV:7000, vdcMax:550, mpptMin:80, mpptMax:550, startV:100, mppt:[12.5,12.5], parallel:20, img:'', verify:'Newer units accept 13.5 A per MPPT; 12.5 A used to be safe.', url:'https://cdn.shopify.com/s/files/1/0259/7486/5967/files/MIN_2.5-6K_TL-X.pdf'},
+    {id:'MIN6000', price:45000, brand:'Growatt', model:'MIN 6000TL-X', type:'gridtie', kw:6, surge:0, maxPV:8100, vdcMax:550, mpptMin:80, mpptMax:550, startV:100, mppt:[12.5,12.5], parallel:20, img:'', verify:'Newer units accept 13.5 A per MPPT; 12.5 A used to be safe.', url:'https://cdn.shopify.com/s/files/1/0259/7486/5967/files/MIN_2.5-6K_TL-X.pdf'}
   ],
   batteries: [
-    {id:'UB100', brand:'Ubetter', model:'51.2V 100Ah Wall-mounted LiFePO4', v:51.2, ah:100, kwh:5.12,  maxI:100, parallel:15, img:'', verify:'Max continuous current and max units in parallel are typical values; confirm on the Ubetter datasheet.', url:'https://www.enfsolar.com/pv/storage-system-datasheet/17076'},
-    {id:'UB200', brand:'Ubetter', model:'51.2V 200Ah 10kWh Wall-mounted LiFePO4', v:51.2, ah:200, kwh:10.24, maxI:150, parallel:15, img:'', verify:'Max continuous current and max units in parallel are typical values; confirm on the Ubetter datasheet (unit weight 85 kg).', url:'https://www.enfsolar.com/pv/storage-system-datasheet/17076'},
-    {id:'ALT314', brand:'Local alternative', model:'51.2V 314Ah 16kWh LiFePO4 (any Growatt-compatible brand)', v:51.2, ah:314, kwh:16.08, maxI:200, parallel:15, img:'', verify:'Generic 314Ah class battery; use only if on Growatt\'s compatible battery list.', url:''}
+    {id:'UB100', price:55000, brand:'Ubetter', model:'51.2V 100Ah Wall-mounted LiFePO4', v:51.2, ah:100, kwh:5.12,  maxI:100, parallel:15, img:'', verify:'Max continuous current and max units in parallel are typical values; confirm on the Ubetter datasheet.', url:'https://www.enfsolar.com/pv/storage-system-datasheet/17076'},
+    {id:'UB200', price:100000, brand:'Ubetter', model:'51.2V 200Ah 10kWh Wall-mounted LiFePO4', v:51.2, ah:200, kwh:10.24, maxI:150, parallel:15, img:'', verify:'Max continuous current and max units in parallel are typical values; confirm on the Ubetter datasheet (unit weight 85 kg).', url:'https://www.enfsolar.com/pv/storage-system-datasheet/17076'},
+    {id:'ALT314', price:140000, brand:'Local alternative', model:'51.2V 314Ah 16kWh LiFePO4 (any Growatt-compatible brand)', v:51.2, ah:314, kwh:16.08, maxI:200, parallel:15, img:'', verify:'Generic 314Ah class battery; use only if on Growatt\'s compatible battery list.', url:''}
   ],
   panels: [
     {id:'JK620', brand:'Jinko', model:'Tiger Neo JKM620N-66HL4M-BDV (bifacial N-type)', wp:620, voc:49.08, vmp:40.74, isc:16.08, imp:15.22, tVoc:-0.25, size:'2382 × 1134 × 30 mm', area:2.70, img:'', verify:'Voc interpolated from the 600–605 W datasheet columns.', url:'https://fvcomponentes.com/wp-content/uploads/2026/05/Data_Sheet_EN-1.pdf'},
@@ -437,7 +440,7 @@ document.getElementById('btnLogout').onclick=()=>{ store.sdel('exoid_auth'); loc
 
 /* ---------------- State ---------------- */
 const DEFAULT_SET = {
-  pricePerKW:50000, batAdder:0, rate:15.551, utility:'meralco', nmFee:50000, exportRate:7.0, escal:3, degr:0.4, years:25,
+  priceMode:'itemized', pvPerKW:38000, pricePerKW:50000, batAdder:0, rate:15.551, utility:'meralco', nmFee:50000, exportRate:7.0, escal:3, degr:0.4, years:25,
   psh:4.5, pr:0.80, dayShare:40, invMargin:15, dod:90, eff:95, offOversize:20, vdPV:2, tMin:10, tCellMax:70, vdAC:3, wPerHP:850,
   panel:'JK620', battery:'auto', inverter:'auto', preparedBy:'', ccEmail:'', bccEmail:'mgb@exoidrobotics.com, rjterte@exoidrobotics.com, macoyyy.barroga@gmail.com', webhook:'', sigName:'', sigTitle:'Solar Energy Consultant', sigPhone:'', sigEmail:'mgb@exoidrobotics.com',
   custom:{wp:580, voc:51.5, vmp:42.5, isc:14.3, imp:13.65, tVoc:-0.27}
@@ -610,7 +613,10 @@ function chooseBattery(nomKWh, demandA){
     if(Math.abs(x.kwh-y.kwh)>0.5) return x.kwh-y.kwh; return x.n-y.n; });
   // Among Ubetter options choose least oversize, fewer units when similar
   const ubs=opts.filter(o=>o.b.brand==='Ubetter' && o.n<=o.b.parallel);
-  if(set.battery==='auto' && ubs.length){ ubs.sort((x,y)=>x.kwh-y.kwh); const base=ubs[0]; const tol=Math.max(2.6, base.kwh*0.12); const near=ubs.filter(o=>o.kwh-base.kwh<=tol).sort((x,y)=>x.n-y.n||x.kwh-y.kwh); return near[0]; }
+  if(set.battery==='auto' && ubs.length){
+    if(ubs.every(o=>num(o.b.price)>0)){ ubs.sort((x,y)=>(x.n*x.b.price-y.n*y.b.price)||(x.n-y.n)); const best=ubs[0];   // cheapest bank; fewer units if within ~3%
+      const near=ubs.filter(o=>o.n*o.b.price<=best.n*best.b.price*1.03).sort((x,y)=>x.n-y.n); return near[0]; }
+    ubs.sort((x,y)=>x.kwh-y.kwh); const base=ubs[0]; const tol=Math.max(2.6, base.kwh*0.12); const near=ubs.filter(o=>o.kwh-base.kwh<=tol).sort((x,y)=>x.n-y.n||x.kwh-y.kwh); return near[0]; }
   return opts[0];
 }
 
@@ -687,6 +693,7 @@ function calculate(){
 
   // ---- Energy & finance ----
   R.fin = finance(R, L, panel);
+  if(R.fin.breakdown.missing.length) R.warnings.push('No selling price set for '+R.fin.breakdown.missing.join(', ')+'. Set it in Equipment catalog → Edit.');
   return R;
 }
 
@@ -769,14 +776,26 @@ function finance(R, L, panel){
     if(R.bat){ const toBat=Math.min(sur, R.batUsable, Nn/eff); fromBat=Math.min(toBat*eff, Nn); sur-=toBat; }
     const exported = exportAllowed? sur:0; return {direct, fromBat, exported, curtailed: exportAllowed?0:sur}; }
   const d1=day(ePV1);
-  const priceSys = R.kWp*num(set.pricePerKW,50000) + (R.bat? R.bat.kwh*num(set.batAdder,0):0) + nmFee;
+  const B={lines:[], missing:[]};
+  if(set.priceMode==='flat'){
+    B.lines.push(['Solar system (flat '+peso(num(set.pricePerKW,50000))+'/kWp × '+r2(R.kWp)+' kWp)', R.kWp*num(set.pricePerKW,50000)]);
+    if(R.bat && num(set.batAdder,0)>0) B.lines.push(['Batteries ('+r1(R.bat.kwh)+' kWh × '+peso(num(set.batAdder))+'/kWh)', R.bat.kwh*num(set.batAdder,0)]);
+  } else {
+    B.lines.push(['Solar panels, mounting, wiring, protection & labor ('+r2(R.kWp)+' kWp × '+peso(num(set.pvPerKW,38000))+')', R.kWp*num(set.pvPerKW,38000)]);
+    const ip=num(R.inv.price,0); if(!ip) B.missing.push(R.inv.model);
+    B.lines.push([R.invN+' × '+R.inv.brand+' '+R.inv.model+' inverter'+(R.invN>1?'s':'')+' @ '+peso(ip), R.invN*ip]);
+    if(R.bat){ const bp=num(R.bat.b.price,0); if(!bp) B.missing.push(R.bat.b.model);
+      B.lines.push([R.bat.n+' × '+R.bat.b.brand+' '+R.bat.b.kwh+' kWh batter'+(R.bat.n>1?'ies':'y')+' @ '+peso(bp), R.bat.n*bp]); }
+  }
+  if(nmFee) B.lines.push(['Net-metering application', nmFee]);
+  const priceSys = B.lines.reduce((a,l)=>a+l[1],0);
   let cum=-priceSys, payback=null; const flows=[]; let total=0;
   for(let y=1;y<=years;y++){ const dd=day(ePV1*Math.pow(1-deg,y-1)); const r=rate*Math.pow(1+esc,y-1), xr=exp*Math.pow(1+esc,y-1);
     const sav=365*((dd.direct+dd.fromBat)*r + dd.exported*xr); total+=sav; const prev=cum; cum+=sav; flows.push({y,sav,cum});
     if(payback===null && cum>=0) payback = (y-1) + (-prev)/sav; }
   const yr1 = flows[0].sav;
   return { ePV1, ePVyr:ePV1*365, d1, solarFraction: Math.min(1,(d1.direct+d1.fromBat)/L.daily), offset: Math.min(1, (exportAllowed? ePV1 : (d1.direct+d1.fromBat))/L.daily), price:priceSys, yr1, monthly1:yr1/12,
-    payback, total, net: total-priceSys, nmFee, netOn, roi:(total-priceSys)/priceSys*100, flows, exportAllowed,
+    payback, total, net: total-priceSys, nmFee, netOn, breakdown:B, roi:(total-priceSys)/priceSys*100, flows, exportAllowed,
     billBefore: L.monthly*rate, billAfter: Math.max(0, L.monthly*rate - yr1/12) };
 }
 
@@ -843,7 +862,7 @@ function bindInputs(root){
       if(el.dataset.k==='set.panel') renderCustomPanel(); };
   });
 }
-function renderAll(){ const ms=document.getElementById('mailStatus'); if(ms) ms.innerHTML=(S.set.webhook||store.sget('exoid_mail'))?'✅ Automatic mailer is active on this device.':'Automatic mailer not configured.'; bindInputs(document); renderSys(); renderMethod(); renderHist(); renderLoads(); renderCustomPanel(); renderCatalog(); }
+function renderAll(){ const pmSel=document.getElementById('selPriceMode'); if(pmSel){ const f=()=>{ document.querySelectorAll('.pm-item').forEach(e=>e.style.display=S.set.priceMode==='flat'?'none':''); document.querySelectorAll('.pm-flat').forEach(e=>e.style.display=S.set.priceMode==='flat'?'':'none'); }; pmSel.addEventListener('change',f); f(); } const ms=document.getElementById('mailStatus'); if(ms) ms.innerHTML=(S.set.webhook||store.sget('exoid_mail'))?'✅ Automatic mailer is active on this device.':'Automatic mailer not configured.'; bindInputs(document); renderSys(); renderMethod(); renderHist(); renderLoads(); renderCustomPanel(); renderCatalog(); }
 function renderSys(){
   document.querySelectorAll('#segSys button').forEach(b=>b.classList.toggle('on',b.dataset.v===S.sys));
   const hint={hybrid:'Grid-connected with battery backup. Solar runs the house in the day, charges the battery, and can export to the grid if net metering is on. During an outage the battery carries the <b>backed-up</b> loads. Inverter: Growatt SPM or SPE series.',
@@ -916,9 +935,10 @@ function renderCatalog(){
       <button class="btn ghost sm" data-avail="${x.id}">${isAvail(x)?'Mark unavailable':'Mark available'}</button>
       ${x.builtin? (CAT_EDITS.over[x.id]?`<button class="btn ghost sm" data-reset="${x.id}">Reset</button>`:'') : `<button class="btn ghost sm" data-del="${x.id}">Delete</button>`}</td>`;
   const row=(x,kind,specs)=>`<tr class="${isAvail(x)?'':'catrow-off'}"><td><div class="imgslot">${x.img?`<img src="${x.img}" alt="">`:'photo<br>slot'}</div></td><td><b>${esc(x.brand)} ${esc(x.model)}</b> ${x.builtin?'':'<span class="pill">added</span>'} ${!isAvail(x)?'<span class="pill">unavailable</span>':''} ${x.verify?'<span class="pill v">verify</span>':''}<div class="small">${specs}</div>${x.verify?`<div class="small" style="color:var(--warn)">${esc(x.verify)}</div>`:''}${x.url?`<div class="small"><a href="${esc(x.url)}" target="_blank" rel="noopener">Datasheet</a></div>`:''}</td>${btns(x,kind)}</tr>`;
-  const invSpec=i=>`${i.kw} kW · max PV ${i.maxPV/1000} kWp · DC max ${i.vdcMax} V · MPPT ${i.mpptMin}–${i.mpptMax} V · ${i.mppt.length} MPPT (${i.mppt.join('/')} A)${i.surge>1?' · surge '+(i.kw*i.surge)+' kVA':''}${i.type!=='gridtie'?' · 48 V battery':''}${i.alsoOffgrid?' · also off-grid':''} · parallel up to ${i.parallel}`;
+  const pr=x=>x.price?` · <b>${peso(x.price)}</b>`:' · <span style="color:var(--err)">no price</span>';
+  const invSpec=i=>`${i.kw} kW${pr(i)} · max PV ${i.maxPV/1000} kWp · DC max ${i.vdcMax} V · MPPT ${i.mpptMin}–${i.mpptMax} V · ${i.mppt.length} MPPT (${i.mppt.join('/')} A)${i.surge>1?' · surge '+(i.kw*i.surge)+' kVA':''}${i.type!=='gridtie'?' · 48 V battery':''}${i.alsoOffgrid?' · also off-grid':''} · parallel up to ${i.parallel}`;
   const inv=['hybrid','offgrid','gridtie'].map(t=>`<h3 style="margin-top:14px">${CAT_LABEL[t]} inverters</h3><table>${CATALOG.inverters.filter(i=>i.type===t).map(i=>row(i,'inverters',invSpec(i))).join('')}</table>`).join('');
-  const bat=`<h3 style="margin-top:14px">Batteries</h3><table>${CATALOG.batteries.map(b=>row(b,'batteries',`${b.v} V · ${b.ah} Ah · ${b.kwh} kWh · max ${b.maxI} A · up to ${b.parallel} in parallel`)).join('')}</table>`;
+  const bat=`<h3 style="margin-top:14px">Batteries</h3><table>${CATALOG.batteries.map(b=>row(b,'batteries',`${b.v} V · ${b.ah} Ah · ${b.kwh} kWh${pr(b)} · max ${b.maxI} A · up to ${b.parallel} in parallel`)).join('')}</table>`;
   const pan=`<h3 style="margin-top:14px">Solar panels</h3><table>${CATALOG.panels.map(p=>row(p,'panels',`${p.wp} W · Voc ${p.voc} V · Vmp ${p.vmp} V · Isc ${p.isc} A · Imp ${p.imp} A · Voc coeff ${p.tVoc}%/°C ${p.size?'· '+esc(p.size):''}`)).join('')}</table>`;
   const v=document.getElementById('catalogView');
   v.innerHTML=`<div class="row" style="margin-bottom:6px"><button class="btn sm" data-add="inverters">+ Add inverter</button><button class="btn sm" data-add="batteries">+ Add battery</button><button class="btn sm" data-add="panels">+ Add solar panel</button><span class="small" id="catStatus">${catStatusText()}</span></div>`+inv+bat+pan;
@@ -952,8 +972,8 @@ async function catChange(mutator){
 const CAT_FIELDS = {
   inverters:[['brand','Brand','text'],['model','Model','text'],['type','Type','type'],['kw','Rated power (kW)','num'],['surge','Surge multiplier (e.g. 2 = 2× for 5 s)','num'],['maxPV','Max PV input (W)','num'],
     ['vdcMax','Max DC voltage (V)','num'],['mpptMin','MPPT min (V)','num'],['mpptMax','MPPT max (V)','num'],['startV','Start voltage (V)','num'],['mppt','Max current per MPPT (A), comma-separated, e.g. 16,16','list'],
-    ['battI','Max battery discharge current (A)','num'],['chargeA','Max solar charge current (A, off-grid)','num'],['parallel','Max units in parallel','num'],['alsoOffgrid','Can also run off-grid?','bool'],['url','Datasheet link','text'],['verify','Notes / to verify','text']],
-  batteries:[['brand','Brand','text'],['model','Model','text'],['v','Nominal voltage (V)','num'],['ah','Capacity (Ah)','num'],['kwh','Energy (kWh, blank = V × Ah)','num'],['maxI','Max continuous current (A)','num'],['parallel','Max units in parallel','num'],['url','Datasheet link','text'],['verify','Notes / to verify','text']],
+    ['price','Selling price per unit (₱)','num'],['battI','Max battery discharge current (A)','num'],['chargeA','Max solar charge current (A, off-grid)','num'],['parallel','Max units in parallel','num'],['alsoOffgrid','Can also run off-grid?','bool'],['url','Datasheet link','text'],['verify','Notes / to verify','text']],
+  batteries:[['brand','Brand','text'],['model','Model','text'],['v','Nominal voltage (V)','num'],['ah','Capacity (Ah)','num'],['kwh','Energy (kWh, blank = V × Ah)','num'],['maxI','Max continuous current (A)','num'],['parallel','Max units in parallel','num'],['price','Selling price per unit (₱)','num'],['url','Datasheet link','text'],['verify','Notes / to verify','text']],
   panels:[['brand','Brand','text'],['model','Model','text'],['wp','Power (W)','num'],['voc','Voc (V)','num'],['vmp','Vmp (V)','num'],['isc','Isc (A)','num'],['imp','Imp (A)','num'],['tVoc','Voc temp. coefficient (%/°C, negative)','num'],['size','Dimensions','text'],['area','Area (m²)','num'],['url','Datasheet link','text'],['verify','Notes / to verify','text']]
 };
 const CAT_REQUIRED = {inverters:['brand','model','kw','maxPV','vdcMax','mpptMin','mpptMax','mppt'], batteries:['brand','model','v','ah','maxI'], panels:['brand','model','wp','voc','vmp','isc','imp']};
@@ -1081,12 +1101,16 @@ function renderResults(R){
 
     <h3 style="margin-top:18px">Investment &amp; savings</h3>
     <div class="kpis">
-      <div class="kpi"><div class="v">${peso(f.price)}</div><div class="l">Estimated system price (${peso(set.pricePerKW)}/kWp${R.bat&&num(set.batAdder)>0?' + battery':''}${f.netOn?' + '+peso(f.nmFee)+' net metering':''})</div></div>
+      <div class="kpi"><div class="v">${peso(f.price)}</div><div class="l">Estimated system price${R.bat?' incl. '+R.bat.n+' batter'+(R.bat.n>1?'ies':'y'):''}${f.netOn?' & net metering':''} (≈ ${peso(f.price/R.kWp)}/kWp)</div></div>
       <div class="kpi"><div class="v">${peso(f.monthly1)}</div><div class="l">Avg. monthly savings, year 1</div></div>
       <div class="kpi"><div class="v">${pb}</div><div class="l">Simple payback</div></div>
       <div class="kpi"><div class="v">${peso(f.net)}</div><div class="l">Net savings over ${set.years} years</div></div>
       <div class="kpi"><div class="v">${Math.round(f.roi)}%</div><div class="l">ROI over ${set.years} years</div></div>
     </div>
+    <div class="tech" style="margin-top:10px"><table><thead><tr><th>Price breakdown (installer view)</th><th class="num">Amount</th></tr></thead><tbody>
+      ${f.breakdown.lines.map(l=>`<tr><td>${esc(l[0])}</td><td class="num">${peso(l[1])}</td></tr>`).join('')}
+      <tr><td><b>Total</b></td><td class="num"><b>${peso(f.price)}</b></td></tr></tbody></table>
+      ${f.breakdown.missing.length?`<div class="errbox">No selling price set for: ${f.breakdown.missing.map(esc).join(', ')}. Add it in Equipment catalog → Edit, or the total is too low.</div>`:''}</div>
     <div class="pricenote">⚠ Estimated price only, final price after full inspection.</div>
     <p class="small">${R.sys==='offgrid'?`Replaces ≈ ${peso(f.billBefore)}/month of grid-equivalent electricity (year 1).`:`Monthly bill now ≈ ${peso(f.billBefore)} → after solar ≈ ${peso(f.billAfter)} (year 1).`} Rate ₱${r2(R.rate)}/kWh${R.rateFromBill?' (from the client\'s bills)':''}, rising ${set.escal}%/yr; panels lose ${set.degr}%/yr.
     ${f.exportAllowed?'Exported energy ('+r1(f.d1.exported)+' kWh/day) is credited at ₱'+r2(num(set.exportRate))+'/kWh.':(R.sys!=='offgrid' && f.d1.curtailed>0.1?'Zero-export: ~'+r1(f.d1.curtailed)+' kWh/day of surplus solar is not used.':'')}</p>
@@ -1208,7 +1232,7 @@ function quoteText(R){
   return L1.join('\n');
 }
 /* ---------------- Saved proposals (shared via the Apps Script "Proposals" sheet) ---------------- */
-const DESIGN_SET_KEYS=['pricePerKW','batAdder','rate','utility','nmFee','exportRate','escal','degr','years','psh','pr','dayShare','invMargin','dod','eff','offOversize','vdPV','tMin','tCellMax','vdAC','wPerHP','panel','battery','inverter','custom'];
+const DESIGN_SET_KEYS=['priceMode','pvPerKW','pricePerKW','batAdder','rate','utility','nmFee','exportRate','escal','degr','years','psh','pr','dayShare','invMargin','dod','eff','offOversize','vdPV','tMin','tCellMax','vdAC','wPerHP','panel','battery','inverter','custom'];
 let PROP_LIST=[], PROP_SHARED=null, PROP_DELETE_ARM=null;
 function propSnapshot(){ const set={}; DESIGN_SET_KEYS.forEach(k=>set[k]=S.set[k]);
   return JSON.parse(JSON.stringify({author:S.author||SESSION_NAME, client:S.client, sys:S.sys, method:S.method, netMeter:S.netMeter, hyb:S.hyb, off:S.off, gt:S.gt, hybOffset:S.hybOffset, hist:S.hist, sched:S.sched, site:S.site, set})); }
