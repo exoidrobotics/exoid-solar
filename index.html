@@ -77,6 +77,12 @@ td.num,th.num{text-align:right}
 .prop .head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-bottom:2px solid var(--brand);padding-bottom:10px;margin-bottom:12px}
 .imgslot{width:56px;height:56px;border:1px dashed var(--line);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);text-align:center;overflow:hidden;background:#fafbfc}
 .imgslot img{max-width:100%;max-height:100%}
+.tech{display:none!important}
+body.adv .tech{display:revert!important}
+body.adv tr.tech{display:table-row!important}
+body.adv .hideadv{display:none}
+#btnAdv.on{background:#f2a900;color:#0d2238;border-color:#f2a900}
+#btnAdv .cnt{display:inline-block;min-width:18px;padding:0 5px;margin-left:6px;border-radius:9px;background:#b26a00;color:#fff;font-size:11px}
 @media print{
   header.top,nav.tabs,.noprint,#tab-input,#tab-settings,#tab-catalog{display:none!important}
   #tab-results{display:block!important}
@@ -111,6 +117,7 @@ td.num,th.num{text-align:right}
     <div class="title">Exoid Solar Sizing &amp; Proposal</div>
     <div class="sp"></div>
     <div class="who" id="whoLbl"></div>
+    <button class="btn ghost sm" style="color:#fff;border-color:#40566e" id="btnAdv" title="Show or hide technical details (wiring, protection, string voltages, installer notes)">⚙ Advanced<span class="cnt hidden" id="advCnt"></span></button>
     <button class="btn ghost sm" style="color:#fff;border-color:#40566e" id="btnNew">New project</button>
     <button class="btn ghost sm" style="color:#fff;border-color:#40566e" id="btnLogout">Log out</button>
   </header>
@@ -186,7 +193,7 @@ td.num,th.num{text-align:right}
           <button class="btn ghost sm" id="btnPresetLoads">Load typical house example</button>
           <div class="right grid g2" style="min-width:320px">
             <div><label>Supply voltage (V)</label><input type="number" data-k="sched.voltage" min="200" max="240"></div>
-            <div><label>Demand / diversity factor</label><input type="number" step="0.05" min="0.3" max="1" data-k="sched.demand"></div>
+            <div class="tech"><label>Demand / diversity factor</label><input type="number" step="0.05" min="0.3" max="1" data-k="sched.demand"></div>
           </div>
         </div>
       </div>
@@ -196,9 +203,9 @@ td.num,th.num{text-align:right}
       <h2>Site</h2>
       <div class="grid g4">
         <div><label>Usable roof area (m²) — optional</label><input type="number" min="0" data-k="site.roof" placeholder="no limit"></div>
-        <div><label>PV cable run, array → inverter (m, one way)</label><input type="number" min="1" data-k="site.pvRun"></div>
-        <div><label>AC run, inverter → panel board (m)</label><input type="number" min="1" data-k="site.acRun"></div>
-        <div><label>Battery cable run (m, one way)</label><input type="number" min="0.5" step="0.5" data-k="site.batRun"></div>
+        <div class="tech"><label>PV cable run, array → inverter (m, one way)</label><input type="number" min="1" data-k="site.pvRun"></div>
+        <div class="tech"><label>AC run, inverter → panel board (m)</label><input type="number" min="1" data-k="site.acRun"></div>
+        <div class="tech"><label>Battery cable run (m, one way)</label><input type="number" min="0.5" step="0.5" data-k="site.batRun"></div>
       </div>
     </div>
 
@@ -261,9 +268,9 @@ td.num,th.num{text-align:right}
       <h2>Quote email</h2>
       <div class="grid g2">
         <div><label>CC every quote to</label><input data-k="set.ccEmail"></div>
-        <div><label>Google Apps Script URL (optional — sends automatically &amp; logs to a Sheet)</label><input data-k="set.webhook" placeholder="https://script.google.com/macros/s/…/exec"></div>
+        <div><label>Google Apps Script URL — override (leave blank to use the built-in mailer)</label><input data-k="set.webhook" placeholder="built-in mailer (unlocked at login)"></div>
       </div>
-      <p class="small">Without a script URL, <b>Email quote</b> opens your email app with the client in <i>To</i> and the CC address filled in. With the script, the tool sends the email itself and logs each quote to a Google Sheet.</p>
+      <p class="small"><span id="mailStatus"></span> If no mailer is set, <b>Email quote</b> opens your email app with the client in <i>To</i> and the CC address filled in. With the script, the tool sends the email itself and logs each quote to a Google Sheet.</p>
     </div>
     <div class="row"><button class="btn ghost" id="btnResetSettings">Restore default assumptions</button></div>
   </section>
@@ -315,36 +322,47 @@ const CATALOG = {
 const CAT_LABEL = {hybrid:'Hybrid', offgrid:'Off-grid', gridtie:'Grid-tie'};
 
 /* ---------------- Login (client-side gate) ---------------- */
-const LOGIN_HASH = '2f41e2bdf8724accd88175d17a9e6661b4a15678b54560584a9a1a66ce5911a7'; // sha256("CODE|PASSWORD")
-function sha256(ascii){ // compact SHA-256 (works without crypto.subtle)
-  function rr(v,a){return (v>>>a)|(v<<(32-a));}
-  const mp=Math.pow, maxWord=mp(2,32); let result='', words=[], asciiBitLength=ascii.length*8;
-  let hash=[], k=[], primeCounter=0; const isComposite={};
-  for(let c=2;primeCounter<64;c++){ if(!isComposite[c]){ for(let i=0;i<313;i+=c) isComposite[i]=c;
-    hash[primeCounter]=(mp(c,.5)*maxWord)|0; k[primeCounter++]=(mp(c,1/3)*maxWord)|0; } }
-  hash=hash.slice(0,8); ascii+='\x80'; while(ascii.length%64-56) ascii+='\x00';
-  for(let i=0;i<ascii.length;i++){ const j=ascii.charCodeAt(i); words[i>>2]|=j<<((3-i)%4)*8; }
-  words[words.length]=((asciiBitLength/maxWord)|0); words[words.length]=asciiBitLength;
-  for(let j=0;j<words.length;){ const w=words.slice(j,j+=16), oldHash=hash; hash=hash.slice(0,8);
-    for(let i=0;i<64;i++){ const w15=w[i-15], w2=w[i-2], a=hash[0], e=hash[4];
-      const t1=hash[7]+(rr(e,6)^rr(e,11)^rr(e,25))+((e&hash[5])^((~e)&hash[6]))+k[i]
-        +(w[i]=(i<16)?w[i]:(w[i-16]+(rr(w15,7)^rr(w15,18)^(w15>>>3))+w[i-7]+(rr(w2,17)^rr(w2,19)^(w2>>>10)))|0);
-      const t2=(rr(a,2)^rr(a,13)^rr(a,22))+((a&hash[1])^(a&hash[2])^(hash[1]&hash[2]));
-      hash=[(t1+t2)|0].concat(hash); hash[4]=(hash[4]+t1)|0; }
-    for(let i=0;i<8;i++) hash[i]=(hash[i]+oldHash[i])|0; }
-  for(let i=0;i<8;i++) for(let j=3;j+1;j--){ const b=(hash[i]>>(j*8))&255; result+=((b<16)?0:'')+b.toString(16); }
-  return result;
+// Login check: PBKDF2-SHA256("CODE|PASSWORD", 150k iterations). Only the derived hash is stored here, never the password.
+const LOGIN_HASH = 'bdfad972549c3cba19ef0cc8076ec59999dbe2e6da244e78daad80194073a265';
+const PBKDF2_ITER = 150000;
+// Quote-mailer (Apps Script) URL, AES-256-GCM encrypted with a key derived from the installer code + password.
+// It is decrypted only after a correct login, so the URL can't be read from this public file.
+const MAIL_CIPHER = ''; // base64(iv[12] + ciphertext + tag[16]); '' = not configured
+const enc = new TextEncoder();
+async function pbkdf2Bits(secret, salt){
+  const km = await crypto.subtle.importKey('raw', enc.encode(secret), 'PBKDF2', false, ['deriveBits']);
+  return new Uint8Array(await crypto.subtle.deriveBits({name:'PBKDF2', salt:enc.encode(salt), iterations:PBKDF2_ITER, hash:'SHA-256'}, km, 256));
+}
+const toHex = u8 => Array.from(u8).map(b=>b.toString(16).padStart(2,'0')).join('');
+async function unlockMailer(secret){
+  if(!MAIL_CIPHER) return '';
+  try{
+    const raw = Uint8Array.from(atob(MAIL_CIPHER), c=>c.charCodeAt(0));
+    const keyBytes = await pbkdf2Bits(secret, 'exoid-mail-v2');
+    const key = await crypto.subtle.importKey('raw', keyBytes, 'AES-GCM', false, ['decrypt']);
+    const pt = await crypto.subtle.decrypt({name:'AES-GCM', iv:raw.slice(0,12)}, key, raw.slice(12));
+    const url = new TextDecoder().decode(pt);
+    return /^https:\/\/script\.google\.com\//.test(url) ? url : '';
+  }catch(e){ return ''; }
 }
 const store = { get(k){try{return localStorage.getItem(k);}catch(e){return null;}}, set(k,v){try{localStorage.setItem(k,v);}catch(e){}},
   sget(k){try{return sessionStorage.getItem(k);}catch(e){return null;}}, sset(k,v){try{sessionStorage.setItem(k,v);}catch(e){}}, sdel(k){try{sessionStorage.removeItem(k);}catch(e){}} };
 let SESSION_USER = null;
 function showApp(code){ SESSION_USER=code; document.getElementById('login').classList.add('hidden'); document.getElementById('app').classList.remove('hidden');
   document.getElementById('whoLbl').textContent='Installer '+code; if(!S.set.preparedBy) S.set.preparedBy='Installer '+code; init(); }
-document.getElementById('loginForm').addEventListener('submit', e=>{
+document.getElementById('loginForm').addEventListener('submit', async e=>{
   e.preventDefault();
-  const code=document.getElementById('lgCode').value.trim().toUpperCase(), pw=document.getElementById('lgPw').value;
-  if(sha256(code+'|'+pw)===LOGIN_HASH){ store.sset('exoid_auth',code); showApp(code); }
-  else document.getElementById('lgErr').textContent='Incorrect installer code or password.';
+  const err=document.getElementById('lgErr'), btn=e.target.querySelector('button');
+  if(!(window.crypto && crypto.subtle)){ err.textContent='This browser is not supported. Open the tool over https in Chrome, Edge or Safari.'; return; }
+  const code=document.getElementById('lgCode').value.trim().toUpperCase(), pw=document.getElementById('lgPw').value, secret=code+'|'+pw;
+  btn.disabled=true; btn.textContent='Checking…'; err.textContent='';
+  try{
+    if(toHex(await pbkdf2Bits(secret,'exoid-login-v2'))===LOGIN_HASH){
+      store.sset('exoid_auth',code);
+      const url=await unlockMailer(secret); if(url) store.sset('exoid_mail',url);
+      showApp(code);
+    } else err.textContent='Incorrect installer code or password.';
+  } finally { btn.disabled=false; btn.textContent='Log in'; }
 });
 document.getElementById('btnLogout').onclick=()=>{ store.sdel('exoid_auth'); location.reload(); };
 
@@ -695,6 +713,8 @@ let LAST=null;
 function init(){
   // tabs
   document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+  setAdv(store.get('exoid_adv')==='1');
+  document.getElementById('btnAdv').onclick=()=>setAdv(!document.body.classList.contains('adv'));
   // equipment selects
   const sp=document.getElementById('selPanel'); sp.innerHTML=CATALOG.panels.map(p=>`<option value="${p.id}">${p.brand} ${p.model}</option>`).join('');
   const sb=document.getElementById('selBattery'); sb.innerHTML='<option value="auto">Auto (prefer Ubetter)</option>'+CATALOG.batteries.map(p=>`<option value="${p.id}">${p.brand} ${p.model}</option>`).join('');
@@ -711,6 +731,8 @@ function init(){
   renderAll();
 }
 function confirmInline(){ return true; } // no blocking dialogs inside the embed
+function setAdv(on){ document.body.classList.toggle('adv',on); const b=document.getElementById('btnAdv'); if(b) b.classList.toggle('on',on); store.set('exoid_adv',on?'1':'0'); }
+function updateAdvCount(){ const c=document.getElementById('advCnt'); const n=LAST?(LAST.warnings.length):0; c.textContent=n; c.classList.toggle('hidden',!n); c.title=n+' installer warning(s)'; }
 function showTab(t){ document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
   ['input','results','settings','catalog'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t)); window.scrollTo(0,0); }
 function bindInputs(root){
@@ -720,7 +742,7 @@ function bindInputs(root){
       if(el.dataset.k==='set.panel') renderCustomPanel(); };
   });
 }
-function renderAll(){ bindInputs(document); renderSys(); renderMethod(); renderHist(); renderLoads(); renderCustomPanel(); renderCatalog(); }
+function renderAll(){ const ms=document.getElementById('mailStatus'); if(ms) ms.innerHTML=(S.set.webhook||store.sget('exoid_mail'))?'✅ Automatic mailer is active on this device.':'Automatic mailer not configured.'; bindInputs(document); renderSys(); renderMethod(); renderHist(); renderLoads(); renderCustomPanel(); renderCatalog(); }
 function renderSys(){
   document.querySelectorAll('#segSys button').forEach(b=>b.classList.toggle('on',b.dataset.v===S.sys));
   const hint={hybrid:'Grid-connected with battery backup. Solar runs the house in the day, charges the battery, and can export to the grid (net-metering). During an outage the battery carries the <b>backed-up</b> loads. Inverter: Growatt SPM series.',
@@ -804,7 +826,7 @@ function runCalc(){
   document.getElementById('resultsEmpty').classList.add('hidden');
   const box=document.getElementById('results'); box.classList.remove('hidden');
   if(R.error && !R.inv){ box.innerHTML=`<div class="errbox">${R.error}</div>`; showTab('results'); return; }
-  box.innerHTML=renderResults(R); showTab('results');
+  box.innerHTML=renderResults(R); showTab('results'); updateAdvCount();
   document.getElementById('btnPrint').onclick=()=>window.print();
   document.getElementById('btnEmail').onclick=()=>emailQuote(R);
   document.getElementById('btnCopy').onclick=()=>{ const t=quoteText(R); (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>flash('Summary copied.')).catch(()=>flash('Copy not allowed here. Select the text in the proposal instead.')); };
@@ -827,7 +849,7 @@ function renderResults(R){
   const mpptTxt = sd.perMppt.map((c,i)=>c?`MPPT ${i+1}: ${c} string${c>1?'s':''} × ${sd.series} panels`:`MPPT ${i+1}: unused`).join(' · ');
   const cfg = `<ul style="margin:6px 0 0 18px;padding:0">
     <li><b>PV array:</b> ${R.panels} panels = ${R.invN>1?R.invN+' inverters × ':''}${sd.strings} string${sd.strings>1?'s':''} × ${sd.series} panels <b>in series</b>${sd.strings>1?' (strings on separate MPPTs'+(Math.max(...sd.perMppt)>1?', or paralleled where 2 share one MPPT':'')+')':''}. ${R.invN>1?'Per inverter — ':''}${mpptTxt}.</li>
-    <li><b>String voltage:</b> Voc at ${set.tMin}°C = ${Math.round(sd.stringVoc)} V (limit ${inv.vdcMax} V) · Vmp hot = ${Math.round(sd.stringVmpHot)} V, Vmp cold = ${Math.round(sd.stringVmpCold)} V (MPPT window ${inv.mpptMin}–${inv.mpptMax} V) · allowed string length ${sd.nMin}–${sd.nMax} panels.</li>
+    <li class="tech"><b>String voltage:</b> Voc at ${set.tMin}°C = ${Math.round(sd.stringVoc)} V (limit ${inv.vdcMax} V) · Vmp hot = ${Math.round(sd.stringVmpHot)} V, Vmp cold = ${Math.round(sd.stringVmpCold)} V (MPPT window ${inv.mpptMin}–${inv.mpptMax} V) · allowed string length ${sd.nMin}–${sd.nMax} panels.</li>
     <li><b>Inverter${R.invN>1?'s':''}:</b> ${R.invN} × ${inv.model}${R.invN>1?(R.sys==='gridtie'?' — independent, each on its own AC breaker':' — <b>in parallel</b> (same phase, parallel comm. cables)'):''}; total ${r1(R.invN*inv.kw)} kW continuous${inv.surge>1?', '+r1(R.invN*inv.kw*inv.surge)+' kVA surge':''}.</li>
     ${R.bat?`<li><b>Battery bank:</b> ${R.bat.n} × ${R.bat.b.kwh} kWh, all <b>in parallel</b> at 51.2 V nominal (48 V system). <b>Never connect these batteries in series.</b> ${R.bat.n>1?'Connect through a common busbar, with equal cable lengths.':''} Link the BMS to the inverter with the CAN/RS485 cable.</li>`:''}
   </ul>`;
@@ -843,14 +865,14 @@ function renderResults(R){
     <button class="btn sec" id="btnPrint">Print / Save as PDF</button>
     <button class="btn ghost" id="btnCopy">Copy summary</button>
     <span class="small" id="flashMsg"></span></div>
-    ${warn}${notes}
+    <div class="tech">${warn}${notes}</div>
   </div>
   <div class="card prop">
     <div class="head"><div><h1>Solar PV System Proposal</h1><div>${sysName}</div></div>
       <div style="text-align:right"><b>Exoid Robotics</b><div class="small">www.exoidrobotics.com</div><div class="small">${today}</div><div class="small">Prepared by: ${esc(set.preparedBy)}</div></div></div>
     <div class="grid g2"><div><div class="small">Client</div><b>${esc(S.client.name)||'—'}</b><div class="small">${esc(S.client.address)} ${S.client.phone?' · '+esc(S.client.phone):''}</div><div class="small">${esc(S.client.email)}</div></div>
       <div><div class="small">Basis of design</div>${S.method==='history'?`Average of ${L.monthsUsed} month(s) of bills: <b>${Math.round(L.monthly)} kWh/month</b>`:`Schedule of loads: <b>${r1(L.daily)} kWh/day</b>, connected ${Math.round(L.connectedW).toLocaleString()} W`}
-      <div class="small">Peak demand ${r1(L.peakKW)} kW${L.peakEstimated?' (estimated)':''} · motor starting ~${r1(L.surgeKW)} kW · ${Math.round(L.dayShare*100)}% daytime use</div></div></div>
+      <div class="small tech">Peak demand ${r1(L.peakKW)} kW${L.peakEstimated?' (estimated)':''} · motor starting ~${r1(L.surgeKW)} kW · ${Math.round(L.dayShare*100)}% daytime use</div></div></div>
     <h3 style="margin-top:16px">System summary</h3>
     <div class="kpis">
       <div class="kpi"><div class="v">${r2(R.kWp)} kWp</div><div class="l">Solar capacity (${R.panels} × ${p.wp} W)</div></div>
@@ -864,17 +886,6 @@ function renderResults(R){
     <h3 style="margin-top:18px">Recommended equipment</h3>
     <table><thead><tr><th style="width:66px"></th><th>Item</th><th class="num">Qty</th><th class="noprint"></th></tr></thead><tbody>${eqRows}</tbody></table>
 
-    <h3 style="margin-top:18px">Configuration (series / parallel)</h3>
-    ${cfg}
-    <div class="diagram" style="margin-top:10px">${diagram(R)}</div>
-
-    <h3 style="margin-top:18px">Protection, switching &amp; accessories</h3>
-    <div class="tablewrap"><table><thead><tr><th>Group</th><th>Item</th><th class="num">Qty</th><th>Notes</th></tr></thead><tbody>${bosRows}</tbody></table></div>
-
-    <h3 style="margin-top:18px">Wire sizing</h3>
-    <div class="tablewrap"><table><thead><tr><th>Circuit</th><th>Design current</th><th>Conductor</th><th>Length</th><th class="num">V-drop</th></tr></thead><tbody>${wireRows}</tbody></table></div>
-    <p class="small">AC conductors sized to the 75°C copper column of PEC 2017 Table 3.10.1.16 (≤3 current-carrying conductors, 30°C), and not smaller than the breaker rating. Derate for hot roofs, conduit fill and bundling, and check the inverter terminal limits before installing.</p>
-
     <h3 style="margin-top:18px">Investment &amp; savings</h3>
     <div class="kpis">
       <div class="kpi"><div class="v">${peso(f.price)}</div><div class="l">Estimated system price (${peso(set.pricePerKW)}/kWp${R.bat&&num(set.batAdder)>0?' + battery':''})</div></div>
@@ -886,6 +897,20 @@ function renderResults(R){
     <p class="small">${R.sys==='offgrid'?`Replaces ≈ ${peso(f.billBefore)}/month of grid-equivalent electricity (year 1).`:`Monthly bill now ≈ ${peso(f.billBefore)} → after solar ≈ ${peso(f.billAfter)} (year 1).`} Rate ₱${r2(R.rate)}/kWh${R.rateFromBill?' (from the client\'s bills)':''}, rising ${set.escal}%/yr; panels lose ${set.degr}%/yr.
     ${f.exportAllowed?'Exported energy ('+r1(f.d1.exported)+' kWh/day) is credited at ₱'+r2(num(set.exportRate))+'/kWh.':(R.sys!=='offgrid' && f.d1.curtailed>0.1?'Zero-export: ~'+r1(f.d1.curtailed)+' kWh/day of surplus solar is not used.':'')}</p>
     <div class="diagram" style="padding:8px">${chart}</div>
+
+    <h3 style="margin-top:18px">Configuration (series / parallel)</h3>
+    ${cfg}
+    <div class="diagram" style="margin-top:10px">${diagram(R)}</div>
+
+    <div class="tech">
+    <h3 style="margin-top:18px">Protection, switching &amp; accessories</h3>
+    <div class="tablewrap"><table><thead><tr><th>Group</th><th>Item</th><th class="num">Qty</th><th>Notes</th></tr></thead><tbody>${bosRows}</tbody></table></div>
+
+    <h3 style="margin-top:18px">Wire sizing</h3>
+    <div class="tablewrap"><table><thead><tr><th>Circuit</th><th>Design current</th><th>Conductor</th><th>Length</th><th class="num">V-drop</th></tr></thead><tbody>${wireRows}</tbody></table></div>
+    <p class="small">AC conductors sized to the 75°C copper column of PEC 2017 Table 3.10.1.16 (≤3 current-carrying conductors, 30°C), and not smaller than the breaker rating. Derate for hot roofs, conduit fill and bundling, and check the inverter terminal limits before installing.</p>
+    </div>
+    <p class="small noprint hideadv" style="margin-top:10px"><i>Protection devices, breaker ratings and wire sizes are listed under ⚙ Advanced.</i></p>
 
     <h3 style="margin-top:18px">Assumptions &amp; notes</h3>
     <ul class="small" style="margin:4px 0 0 18px;padding:0">
@@ -975,8 +1000,9 @@ function quoteText(R){
 function emailQuote(R){
   const to=S.client.email, cc=S.set.ccEmail||'', subj=`Solar PV Proposal – ${S.client.name||'Exoid Robotics'} – ${r2(R.kWp)} kWp ${CAT_LABEL[R.sys]}`;
   const body=quoteText(R);
-  if(S.set.webhook){
-    fetch(S.set.webhook,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+  const hook = S.set.webhook || store.sget('exoid_mail') || '';
+  if(hook){
+    fetch(hook,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
       body:JSON.stringify({to,cc,subject:subj,body,client:S.client,installer:SESSION_USER,kWp:R.kWp,system:R.sys,price:Math.round(R.fin.price),
         panels:R.panels,inverter:R.invN+' x '+R.inv.model,battery:R.bat?R.bat.n+' x '+R.bat.b.model:'none',payback:R.fin.payback})})
       .then(()=>flash('Quote sent to '+to+' (CC '+cc+').')).catch(()=>{ flash('Automatic send failed; opening your email app instead.'); openMail(to,cc,subj,body); });
