@@ -282,7 +282,8 @@ body.adv .hideadv{display:none}
     <div class="card">
       <h2>Quote email</h2>
       <div class="grid g2">
-        <div><label>CC every quote to</label><input data-k="set.ccEmail"></div>
+        <div><label>CC every quote to (visible to the client)</label><input data-k="set.ccEmail"></div>
+        <div><label>BCC every quote to (hidden copies for the team, comma-separated)</label><input data-k="set.bccEmail"></div>
         <div><label>Signature — name (blank = "Prepared by")</label><input data-k="set.sigName"></div>
         <div><label>Signature — title</label><input data-k="set.sigTitle"></div>
         <div><label>Signature — mobile / phone</label><input data-k="set.sigPhone" placeholder="e.g. 0917 123 4567"></div>
@@ -420,7 +421,7 @@ document.getElementById('btnLogout').onclick=()=>{ store.sdel('exoid_auth'); loc
 const DEFAULT_SET = {
   pricePerKW:50000, batAdder:0, rate:15.551, utility:'meralco', nmFee:50000, exportRate:7.0, escal:3, degr:0.4, years:25,
   psh:4.5, pr:0.80, dayShare:40, invMargin:15, dod:90, eff:95, offOversize:20, vdPV:2, tMin:10, tCellMax:70, vdAC:3, wPerHP:850,
-  panel:'JK620', battery:'auto', inverter:'auto', preparedBy:'', ccEmail:'mgb@exoidrobotics.com', webhook:'', sigName:'', sigTitle:'Solar Energy Consultant', sigPhone:'', sigEmail:'mgb@exoidrobotics.com',
+  panel:'JK620', battery:'auto', inverter:'auto', preparedBy:'', ccEmail:'mgb@exoidrobotics.com', bccEmail:'rjt@exoidrobotics.com, macoyyy.barroga@gmail.com', webhook:'', sigName:'', sigTitle:'Solar Energy Consultant', sigPhone:'', sigEmail:'mgb@exoidrobotics.com',
   custom:{wp:580, voc:51.5, vmp:42.5, isc:14.3, imp:13.65, tVoc:-0.27}
 };
 function monthsBack(){ const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; const d=new Date(); const out=[];
@@ -1012,7 +1013,7 @@ function renderResults(R){
   const chart = cashChart(f);
   return `
   <div class="card noprint"><div class="row">
-    <button class="btn" id="btnEmail">✉ Email quote to client (CC ${set.ccEmail||'—'})</button>
+    <button class="btn" id="btnEmail">✉ Send to Email</button>
     <button class="btn sec" id="btnPdf">⬇ Download PDF</button>
     <button class="btn ghost" id="btnPrint">Print</button>
     <button class="btn ghost" id="btnCopy">Copy summary</button>
@@ -1222,7 +1223,7 @@ async function makePdf(R){
 
 /* ---------------- Quote email ---------------- */
 async function emailQuote(R){
-  const to=S.client.email, cc=S.set.ccEmail||'', subj=quoteSubject(R);
+  const to=S.client.email, cc=S.set.ccEmail||'', bcc=(S.set.bccEmail||'').split(/[,;\s]+/).filter(x=>x.includes('@')).join(','), subj=quoteSubject(R);
   const body=quoteText(R);
   const hook = S.set.webhook || store.sget('exoid_mail') || '';
   const btn=document.getElementById('btnEmail'); btn.disabled=true;
@@ -1230,21 +1231,21 @@ async function emailQuote(R){
   try{ flash('Preparing PDF…'); pdf=await makePdf(R); }catch(e){ pdf=null; }
   try{
     if(hook){
-      const payload={to,cc,subject:subj,body,client:S.client,installer:SESSION_NAME+' ('+SESSION_USER+')',kWp:R.kWp,system:R.sys,price:Math.round(R.fin.price),
+      const payload={to,cc,bcc,subject:subj,body,client:S.client,installer:SESSION_NAME+' ('+SESSION_USER+')',kWp:R.kWp,system:R.sys,price:Math.round(R.fin.price),
         panels:R.panels,inverter:R.invN+' x '+R.inv.model,battery:R.bat?R.bat.n+' x '+R.bat.b.model:'none',payback:R.fin.payback};
       if(pdf){ payload.pdfName=pdfName(R); payload.pdfBase64=pdf.output('datauristring').split(',')[1]; }
       flash('Sending…');
       await fetch(hook,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
-      flash('Quote sent to '+to+' (CC '+cc+')'+(pdf?' with the PDF proposal attached.':'. The PDF could not be created, so it was sent without an attachment.'));
+      flash('Proposal sent to '+to+(pdf?' with the PDF attached.':'. The PDF could not be created, so it was sent without an attachment.')+' Team copies sent.');
     } else {
       if(pdf) pdf.save(pdfName(R));
-      openMail(to,cc,subj,body,!!pdf);
+      openMail(to,cc,bcc,subj,body,!!pdf);
     }
-  }catch(e){ flash('Automatic send failed; opening your email app instead.'); if(pdf) pdf.save(pdfName(R)); openMail(to,cc,subj,body,!!pdf); }
+  }catch(e){ flash('Automatic send failed; opening your email app instead.'); if(pdf) pdf.save(pdfName(R)); openMail(to,cc,bcc,subj,body,!!pdf); }
   finally{ btn.disabled=false; }
 }
-function openMail(to,cc,subj,body,pdfSaved){
-  const url=`mailto:${encodeURIComponent(to)}?cc=${encodeURIComponent(cc)}&subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
+function openMail(to,cc,bcc,subj,body,pdfSaved){
+  const url=`mailto:${encodeURIComponent(to)}?cc=${encodeURIComponent(cc)}${bcc?'&bcc='+encodeURIComponent(bcc):''}&subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
   const w=window.open(url,'_blank'); if(!w){ try{ window.top.location.href=url; }catch(e){ location.href=url; } }
   flash(pdfSaved?'Email draft opened and the PDF was downloaded. Attach it to the email before sending.':'Email draft opened. Use Download PDF and attach it before sending.');
 }

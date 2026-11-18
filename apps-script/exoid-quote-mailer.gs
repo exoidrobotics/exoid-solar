@@ -56,6 +56,7 @@ function doPost(e) {
   const html = '<div style="font-family:Arial,sans-serif;font-size:14px;white-space:pre-wrap">' +
                String(d.body).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])) + '</div>';
   const mail = { to: d.to, cc: cc, subject: d.subject, body: d.body, htmlBody: html, name: 'Exoid Robotics' };
+  if (d.bcc) mail.bcc = String(d.bcc);   // hidden team copies
   if (d.pdfBase64) {
     mail.attachments = [Utilities.newBlob(Utilities.base64Decode(d.pdfBase64), 'application/pdf', d.pdfName || 'Exoid Solar Proposal.pdf')];
   }
