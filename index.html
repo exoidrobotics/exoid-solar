@@ -1,0 +1,995 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Exoid Robotics – Solar Sizing & Proposal Tool</title>
+<style>
+:root{
+  --bg:#f5f7fa; --card:#fff; --ink:#1b2430; --muted:#5d6b7a; --line:#dde3ea;
+  --brand:#0b5cad; --brand2:#0a8f6a; --warn:#b26a00; --warnbg:#fff6e5; --err:#b3261e; --errbg:#fdecea;
+  --okbg:#e8f6f0; --sun:#f2a900;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.45}
+h1,h2,h3{margin:0 0 .5em;line-height:1.2}
+h2{font-size:18px} h3{font-size:15px}
+button{font:inherit;cursor:pointer}
+input,select{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink);min-width:0}
+input[type=number]{width:100%}
+.grid input,.grid select{width:100%}
+label{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}
+.small{font-size:12px;color:var(--muted)}
+.btn{background:var(--brand);color:#fff;border:0;border-radius:8px;padding:9px 16px;font-weight:600}
+.btn:hover{filter:brightness(1.08)}
+.btn.sec{background:#fff;color:var(--brand);border:1px solid var(--brand)}
+.btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--line)}
+.btn.green{background:var(--brand2)}
+.btn.sm{padding:5px 10px;font-size:12px}
+/* login */
+#login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.loginbox{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:28px;width:100%;max-width:360px;box-shadow:0 6px 24px rgba(0,0,0,.06)}
+.loginbox .logo{display:flex;align-items:center;gap:10px;margin-bottom:18px}
+.loginbox input{width:100%;margin-bottom:12px}
+.err{color:var(--err);font-size:13px;min-height:18px}
+/* app */
+header.top{background:#0d2238;color:#fff;padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+header.top .title{font-weight:700;font-size:16px}
+header.top .sp{flex:1}
+header.top .who{font-size:12px;opacity:.8}
+nav.tabs{display:flex;gap:4px;padding:0 16px;background:#fff;border-bottom:1px solid var(--line);overflow-x:auto}
+nav.tabs button{border:0;background:none;padding:12px 14px;color:var(--muted);font-weight:600;border-bottom:3px solid transparent;white-space:nowrap}
+nav.tabs button.on{color:var(--brand);border-bottom-color:var(--brand)}
+main{padding:18px;max-width:1180px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
+.grid{display:grid;gap:12px}
+.g2{grid-template-columns:repeat(2,minmax(0,1fr))}
+.g3{grid-template-columns:repeat(3,minmax(0,1fr))}
+.g4{grid-template-columns:repeat(4,minmax(0,1fr))}
+.g6{grid-template-columns:repeat(6,minmax(0,1fr))}
+@media(max-width:820px){.g3,.g4,.g6{grid-template-columns:repeat(2,minmax(0,1fr))}.g2{grid-template-columns:1fr}}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;flex-wrap:wrap}
+.seg button{border:0;background:#fff;padding:9px 14px;color:var(--muted);font-weight:600;border-right:1px solid var(--line)}
+.seg button:last-child{border-right:0}
+.seg button.on{background:var(--brand);color:#fff}
+.hint{background:#eef4fb;border-left:3px solid var(--brand);padding:8px 12px;border-radius:6px;font-size:13px;color:#24405e;margin:8px 0}
+table{border-collapse:collapse;width:100%}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
+th{font-size:12px;color:var(--muted);font-weight:600;background:#fafbfc}
+td.num,th.num{text-align:right}
+.loads input,.loads select{width:100%;padding:5px 6px}
+.loads td{padding:4px}
+.tablewrap{overflow-x:auto}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.kpi{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff}
+.kpi .v{font-size:20px;font-weight:700}
+.kpi .l{font-size:12px;color:var(--muted)}
+.warnbox{background:var(--warnbg);border-left:3px solid var(--warn);padding:8px 12px;border-radius:6px;margin:6px 0;font-size:13px}
+.errbox{background:var(--errbg);border-left:3px solid var(--err);padding:8px 12px;border-radius:6px;margin:6px 0;font-size:13px}
+.okbox{background:var(--okbg);border-left:3px solid var(--brand2);padding:8px 12px;border-radius:6px;margin:6px 0;font-size:13px}
+.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;background:#eef2f6;color:var(--muted)}
+.pill.v{background:var(--warnbg);color:var(--warn)}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.right{margin-left:auto}
+.hidden{display:none!important}
+.diagram{width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:#fcfdfe}
+.prop h1{font-size:22px}
+.prop .head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-bottom:2px solid var(--brand);padding-bottom:10px;margin-bottom:12px}
+.imgslot{width:56px;height:56px;border:1px dashed var(--line);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);text-align:center;overflow:hidden;background:#fafbfc}
+.imgslot img{max-width:100%;max-height:100%}
+@media print{
+  header.top,nav.tabs,.noprint,#tab-input,#tab-settings,#tab-catalog{display:none!important}
+  #tab-results{display:block!important}
+  body{background:#fff}
+  .card{border:0;padding:0;margin-bottom:14px;break-inside:avoid}
+  main{padding:0}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ LOGIN ============ -->
+<div id="login">
+  <form class="loginbox" id="loginForm" autocomplete="off">
+    <div class="logo">
+      <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="7" fill="#f2a900"/><g stroke="#f2a900" stroke-width="2.4" stroke-linecap="round"><path d="M17 2v5M17 27v5M2 17h5M27 17h5M6.4 6.4l3.5 3.5M24.1 24.1l3.5 3.5M6.4 27.6l3.5-3.5M24.1 9.9l3.5-3.5"/></g></svg>
+      <div><div style="font-weight:700">Exoid Robotics</div><div class="small">Solar Sizing &amp; Proposal Tool — installers only</div></div>
+    </div>
+    <label for="lgCode">Installer code</label>
+    <input id="lgCode" required autocapitalize="characters">
+    <label for="lgPw">Password</label>
+    <input id="lgPw" type="password" required>
+    <div class="err" id="lgErr"></div>
+    <button class="btn" style="width:100%">Log in</button>
+  </form>
+</div>
+
+<!-- ============ APP ============ -->
+<div id="app" class="hidden">
+  <header class="top">
+    <svg width="26" height="26" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="7" fill="#f2a900"/><g stroke="#f2a900" stroke-width="2.4" stroke-linecap="round"><path d="M17 2v5M17 27v5M2 17h5M27 17h5M6.4 6.4l3.5 3.5M24.1 24.1l3.5 3.5M6.4 27.6l3.5-3.5M24.1 9.9l3.5-3.5"/></g></svg>
+    <div class="title">Exoid Solar Sizing &amp; Proposal</div>
+    <div class="sp"></div>
+    <div class="who" id="whoLbl"></div>
+    <button class="btn ghost sm" style="color:#fff;border-color:#40566e" id="btnNew">New project</button>
+    <button class="btn ghost sm" style="color:#fff;border-color:#40566e" id="btnLogout">Log out</button>
+  </header>
+  <nav class="tabs">
+    <button data-tab="input" class="on">1 · Project &amp; loads</button>
+    <button data-tab="results">2 · Recommendation &amp; proposal</button>
+    <button data-tab="settings">Assumptions</button>
+    <button data-tab="catalog">Equipment catalog</button>
+  </nav>
+
+  <main>
+  <!-- ========== INPUT TAB ========== -->
+  <section id="tab-input">
+    <div class="card">
+      <h2>Client</h2>
+      <div class="grid g4">
+        <div><label>Client name</label><input id="cName" data-k="client.name"></div>
+        <div><label>Client email <span style="color:var(--err)">*</span></label><input id="cEmail" type="email" data-k="client.email"></div>
+        <div><label>Phone</label><input data-k="client.phone"></div>
+        <div><label>Site address / city</label><input data-k="client.address"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>System type</h2>
+      <div class="seg" id="segSys">
+        <button data-v="hybrid">Hybrid (grid + battery)</button>
+        <button data-v="offgrid">Off-grid (battery, no grid)</button>
+        <button data-v="gridtie">Grid-tie (no battery)</button>
+      </div>
+      <div class="hint" id="sysHint"></div>
+      <div class="grid g4" id="sysOpts"></div>
+    </div>
+
+    <div class="card">
+      <h2>Consumption data</h2>
+      <div class="seg" id="segMethod">
+        <button data-v="history">Monthly consumption history</button>
+        <button data-v="schedule">Schedule of loads</button>
+      </div>
+
+      <!-- history -->
+      <div id="mHistory" style="margin-top:14px">
+        <div class="hint">Enter kWh from the electric bill. Only the most recent month is required; more months give a better average.</div>
+        <div class="tablewrap"><table>
+          <thead><tr><th>Month</th><th>Consumption (kWh)</th><th>Bill amount (₱, optional)</th></tr></thead>
+          <tbody id="histBody"></tbody>
+        </table></div>
+        <div class="grid g4" style="margin-top:12px">
+          <div><label>Largest simultaneous load (kW) — optional</label><input type="number" step="0.1" min="0" data-k="hist.peakKW" placeholder="auto-estimate"></div>
+          <div><label>Largest motor / aircon (HP) — optional</label><input type="number" step="0.5" min="0" data-k="hist.motorHP" placeholder="e.g. 2"></div>
+          <div><label>Largest motor is inverter-type?</label><select data-k="hist.motorInv"><option value="yes">Yes (inverter)</option><option value="no">No (non-inverter)</option></select></div>
+          <div><label>Use rate from bill (₱ ÷ kWh)?</label><select data-k="hist.useBillRate"><option value="yes">Yes, if bill amounts entered</option><option value="no">No, use Assumptions rate</option></select></div>
+        </div>
+      </div>
+
+      <!-- schedule -->
+      <div id="mSchedule" style="margin-top:14px" class="hidden">
+        <div class="hint">List every load with its quantity. <b>Hours/day</b> is how long the appliance is switched on (a fridge = 24 h). <b>Energy %</b> is the share of rated watts it uses on average while on. It fills in automatically from the load type: inverter aircons and fridges use less energy than non-inverter ones because they slow down instead of cycling at full power. Edit it if you have measured data. <b>Backup</b> marks loads the battery must carry during an outage (hybrid only).</div>
+        <div class="tablewrap"><table class="loads">
+          <thead><tr>
+            <th style="min-width:130px">Category</th><th style="min-width:130px">Description</th><th style="width:62px">HP</th>
+            <th style="width:80px">Watts each</th><th style="width:56px">Qty</th><th style="width:62px">Hrs/day</th>
+            <th style="width:96px">When used</th><th style="width:118px">Load type</th><th style="width:66px" title="Average share of rated watts used while switched on">Energy %</th><th style="width:52px">Backup</th>
+            <th class="num" style="width:70px">Total W</th><th class="num" style="width:70px">kWh/day</th><th style="width:30px"></th>
+          </tr></thead>
+          <tbody id="loadBody"></tbody>
+          <tfoot><tr><th colspan="10" class="num">Totals</th><th class="num" id="ltW">0</th><th class="num" id="ltE">0</th><th></th></tr></tfoot>
+        </table></div>
+        <div class="row" style="margin-top:10px">
+          <select id="addCat"></select>
+          <button class="btn sec sm" id="btnAddLoad">+ Add load</button>
+          <button class="btn ghost sm" id="btnPresetLoads">Load typical house example</button>
+          <div class="right grid g2" style="min-width:320px">
+            <div><label>Supply voltage (V)</label><input type="number" data-k="sched.voltage" min="200" max="240"></div>
+            <div><label>Demand / diversity factor</label><input type="number" step="0.05" min="0.3" max="1" data-k="sched.demand"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Site</h2>
+      <div class="grid g4">
+        <div><label>Usable roof area (m²) — optional</label><input type="number" min="0" data-k="site.roof" placeholder="no limit"></div>
+        <div><label>PV cable run, array → inverter (m, one way)</label><input type="number" min="1" data-k="site.pvRun"></div>
+        <div><label>AC run, inverter → panel board (m)</label><input type="number" min="1" data-k="site.acRun"></div>
+        <div><label>Battery cable run (m, one way)</label><input type="number" min="0.5" step="0.5" data-k="site.batRun"></div>
+      </div>
+    </div>
+
+    <div class="row noprint">
+      <button class="btn green" id="btnCalc">Calculate recommendation →</button>
+      <span class="small" id="calcNote"></span>
+    </div>
+  </section>
+
+  <!-- ========== RESULTS TAB ========== -->
+  <section id="tab-results" class="hidden">
+    <div id="resultsEmpty" class="card">Fill in the project and press <b>Calculate recommendation</b>.</div>
+    <div id="results" class="hidden"></div>
+  </section>
+
+  <!-- ========== SETTINGS TAB ========== -->
+  <section id="tab-settings" class="hidden">
+    <div class="card">
+      <h2>Pricing &amp; ROI</h2>
+      <div class="grid g4">
+        <div><label>Price per kWp of PV (₱)</label><input type="number" data-k="set.pricePerKW"></div>
+        <div><label>Battery adder per kWh (₱, 0 = included)</label><input type="number" data-k="set.batAdder"></div>
+        <div><label>Electricity rate (₱/kWh)</label><input type="number" step="0.01" data-k="set.rate"></div>
+        <div><label>Export credit (₱/kWh, net-metering)</label><input type="number" step="0.01" data-k="set.exportRate"></div>
+        <div><label>Rate escalation per year (%)</label><input type="number" step="0.5" data-k="set.escal"></div>
+        <div><label>Panel degradation per year (%)</label><input type="number" step="0.05" data-k="set.degr"></div>
+        <div><label>Analysis period (years)</label><input type="number" data-k="set.years"></div>
+        <div><label>Export allowed (net-metering)?</label><select data-k="set.export"><option value="yes">Yes</option><option value="no">No (zero export)</option></select></div>
+      </div>
+      <p class="small">Default rate: Meralco residential rate, November 2026 (₱15.5510/kWh). Change it for other distribution utilities or cooperatives. The export credit is an estimate; check the net-metering credit on the client's bill.</p>
+    </div>
+    <div class="card">
+      <h2>Energy &amp; design</h2>
+      <div class="grid g4">
+        <div><label>Peak sun hours (h/day)</label><input type="number" step="0.1" data-k="set.psh"></div>
+        <div><label>Performance ratio (system losses)</label><input type="number" step="0.01" data-k="set.pr"></div>
+        <div><label>Daytime share of usage (%) — history mode</label><input type="number" data-k="set.dayShare"></div>
+        <div><label>Inverter safety margin (%)</label><input type="number" data-k="set.invMargin"></div>
+        <div><label>Battery usable depth of discharge (%)</label><input type="number" data-k="set.dod"></div>
+        <div><label>Battery/inverter round-trip efficiency (%)</label><input type="number" data-k="set.eff"></div>
+        <div><label>Off-grid PV oversize for charging (%)</label><input type="number" data-k="set.offOversize"></div>
+        <div><label>Max PV voltage drop (%)</label><input type="number" step="0.5" data-k="set.vdPV"></div>
+        <div><label>Lowest site temperature (°C) — for Voc</label><input type="number" data-k="set.tMin"></div>
+        <div><label>Hot cell temperature (°C) — for Vmp</label><input type="number" data-k="set.tCellMax"></div>
+        <div><label>Max AC voltage drop (%)</label><input type="number" step="0.5" data-k="set.vdAC"></div>
+        <div><label>Aircon watts per HP (input power)</label><input type="number" data-k="set.wPerHP"></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Equipment preferences</h2>
+      <div class="grid g4">
+        <div><label>Solar panel</label><select data-k="set.panel" id="selPanel"></select></div>
+        <div><label>Battery</label><select data-k="set.battery" id="selBattery"></select></div>
+        <div><label>Inverter (auto = best fit)</label><select data-k="set.inverter" id="selInverter"></select></div>
+        <div><label>Installer / prepared by</label><input data-k="set.preparedBy"></div>
+      </div>
+      <div id="customPanel" class="grid g6" style="margin-top:12px"></div>
+    </div>
+    <div class="card">
+      <h2>Quote email</h2>
+      <div class="grid g2">
+        <div><label>CC every quote to</label><input data-k="set.ccEmail"></div>
+        <div><label>Google Apps Script URL (optional — sends automatically &amp; logs to a Sheet)</label><input data-k="set.webhook" placeholder="https://script.google.com/macros/s/…/exec"></div>
+      </div>
+      <p class="small">Without a script URL, <b>Email quote</b> opens your email app with the client in <i>To</i> and the CC address filled in. With the script, the tool sends the email itself and logs each quote to a Google Sheet.</p>
+    </div>
+    <div class="row"><button class="btn ghost" id="btnResetSettings">Restore default assumptions</button></div>
+  </section>
+
+  <!-- ========== CATALOG TAB ========== -->
+  <section id="tab-catalog" class="hidden">
+    <div class="card">
+      <h2>Equipment catalog</h2>
+      <p class="small">These are the models the tool chooses from. Specs come from manufacturer datasheets. Items tagged <span class="pill v">verify</span> include a value inferred from a sister model or a typical figure; confirm with your distributor before final design. Each item has an image slot: put your distributor-supplied photo URL in the catalog block of the code (<code>img:</code>).</p>
+      <div id="catalogView"></div>
+    </div>
+  </section>
+  </main>
+</div>
+
+<script>
+/* ======================================================================
+   EQUIPMENT CATALOG  — edit here to add/update models, prices or photos.
+   img: put a URL to a distributor-supplied product photo ('' = empty slot)
+   ====================================================================== */
+const CATALOG = {
+  inverters: [
+    // ---- Growatt SPM series: single-phase 230V hybrid, 48V low-voltage battery, grid-interactive ----
+    {id:'SPM3000', brand:'Growatt', model:'SPM 3000TL-HU', type:'hybrid', kw:3,  surge:1.0, maxPV:4500,  vdcMax:600, mpptMin:150, mpptMax:550, startV:150, mppt:[22,22], battI:70,  parallel:6, img:'', verify:'DC voltage window and MPPT current taken from SPM 6000TL-HU datasheet (same series).', url:'https://en.growatt.com/'},
+    {id:'SPM4000', brand:'Growatt', model:'SPM 4000TL-HU', type:'hybrid', kw:4,  surge:1.0, maxPV:6000,  vdcMax:600, mpptMin:150, mpptMax:550, startV:150, mppt:[22,22], battI:null,parallel:6, img:'', verify:'DC limits taken from SPM 6000TL-HU datasheet (same series).', url:'https://en.growatt.com/'},
+    {id:'SPM5000', brand:'Growatt', model:'SPM 5000TL-HU', type:'hybrid', kw:5,  surge:1.0, maxPV:7500,  vdcMax:600, mpptMin:150, mpptMax:550, startV:150, mppt:[22,22], battI:null,parallel:6, img:'', verify:'DC limits taken from SPM 6000TL-HU datasheet (same series).', url:'https://en.growatt.com/'},
+    {id:'SPM6000', brand:'Growatt', model:'SPM 6000TL-HU', type:'hybrid', kw:6,  surge:1.0, maxPV:9000,  vdcMax:600, mpptMin:150, mpptMax:550, startV:150, mppt:[22,22], battI:140, parallel:6, img:'', verify:'', url:'https://cdn.enf.com.cn/z/pp/2024/11/cn5tcai97n036llj/spm-6000tl-hu-datasheet-en-202408.pdf'},
+    {id:'SPM8000', brand:'Growatt', model:'SPM 8000TL-HU', type:'hybrid', kw:8,  surge:1.0, maxPV:16000, vdcMax:600, mpptMin:150, mpptMax:500, startV:150, mppt:[16,16,32], battI:165, parallel:6, img:'', verify:'', url:'https://amonraenergy.xt.ht/wp-content/uploads/2025/02/SPM-8000TL-HU.pdf'},
+    {id:'SPM10000',brand:'Growatt', model:'SPM 10000TL-HU',type:'hybrid', kw:10, surge:1.0, maxPV:20000, vdcMax:600, mpptMin:150, mpptMax:550, startV:150, mppt:[16,16,32], battI:200, parallel:6, img:'', verify:'', url:'https://cdn.estg.eu/p/1/b/4/a/1b4aec53dd63fdabc965f400f0fd9ad88b2bbcd7_Growatt_SPM_TL_HU_Datasheet.pdf'},
+    // ---- Growatt SPF series: off-grid 230V, 48V battery, built-in transfer switch, no export ----
+    {id:'SPF3500', brand:'Growatt', model:'SPF 3500 ES',      type:'offgrid', kw:3.5, surge:2.0, maxPV:4500, vdcMax:450, mpptMin:120, mpptMax:430, startV:120, mppt:[18], chargeA:80,  parallel:6, img:'', verify:'MPPT current limit is the 18 A max PV input (Isc) on the certification record.', url:'https://cdn.enf.com.cn/z/pp/2023/8/3st2suz7ml7joq/SPF-3500-5000-ES-Datasheet.pdf'},
+    {id:'SPF5000', brand:'Growatt', model:'SPF 5000 ES',      type:'offgrid', kw:5,   surge:2.0, maxPV:6000, vdcMax:450, mpptMin:120, mpptMax:430, startV:120, mppt:[18], chargeA:100, parallel:6, img:'', verify:'MPPT current limit assumed same as SPF 3500 ES (18 A).', url:'https://cdn.enf.com.cn/z/pp/2023/8/3st2suz7ml7joq/SPF-3500-5000-ES-Datasheet.pdf'},
+    {id:'SPF6000', brand:'Growatt', model:'SPF 6000 ES Plus', type:'offgrid', kw:6,   surge:2.0, maxPV:8000, vdcMax:500, mpptMin:120, mpptMax:450, startV:120, mppt:[16,16], chargeA:100, parallel:6, img:'', verify:'', url:'https://aurinkosahkotukku.fi/wp-content/uploads/2025/01/SPF-6000-ES-Plus.cdr_.pdf'},
+    // ---- Growatt MIN TL-X: single-phase grid-tie, no battery ----
+    {id:'MIN3000', brand:'Growatt', model:'MIN 3000TL-X', type:'gridtie', kw:3, surge:0, maxPV:4200, vdcMax:500, mpptMin:80, mpptMax:500, startV:100, mppt:[12.5,12.5], parallel:20, img:'', verify:'Newer units accept 13.5 A per MPPT; 12.5 A used to be safe.', url:'https://cdn.shopify.com/s/files/1/0259/7486/5967/files/MIN_2.5-6K_TL-X.pdf'},
+    {id:'MIN5000', brand:'Growatt', model:'MIN 5000TL-X', type:'gridtie', kw:5, surge:0, maxPV:7000, vdcMax:550, mpptMin:80, mpptMax:550, startV:100, mppt:[12.5,12.5], parallel:20, img:'', verify:'Newer units accept 13.5 A per MPPT; 12.5 A used to be safe.', url:'https://cdn.shopify.com/s/files/1/0259/7486/5967/files/MIN_2.5-6K_TL-X.pdf'},
+    {id:'MIN6000', brand:'Growatt', model:'MIN 6000TL-X', type:'gridtie', kw:6, surge:0, maxPV:8100, vdcMax:550, mpptMin:80, mpptMax:550, startV:100, mppt:[12.5,12.5], parallel:20, img:'', verify:'Newer units accept 13.5 A per MPPT; 12.5 A used to be safe.', url:'https://cdn.shopify.com/s/files/1/0259/7486/5967/files/MIN_2.5-6K_TL-X.pdf'}
+  ],
+  batteries: [
+    {id:'UB100', brand:'Ubetter', model:'51.2V 100Ah Wall-mounted LiFePO4', v:51.2, ah:100, kwh:5.12,  maxI:100, parallel:15, img:'', verify:'Max continuous current and max units in parallel are typical values; confirm on the Ubetter datasheet.', url:'https://www.enfsolar.com/pv/storage-system-datasheet/17076'},
+    {id:'UB200', brand:'Ubetter', model:'51.2V 200Ah 10kWh Wall-mounted LiFePO4', v:51.2, ah:200, kwh:10.24, maxI:150, parallel:15, img:'', verify:'Max continuous current and max units in parallel are typical values; confirm on the Ubetter datasheet (unit weight 85 kg).', url:'https://www.enfsolar.com/pv/storage-system-datasheet/17076'},
+    {id:'ALT314', brand:'Local alternative', model:'51.2V 314Ah 16kWh LiFePO4 (any Growatt-compatible brand)', v:51.2, ah:314, kwh:16.08, maxI:200, parallel:15, img:'', verify:'Generic 314Ah class battery; use only if on Growatt\'s compatible battery list.', url:''}
+  ],
+  panels: [
+    {id:'JK620', brand:'Jinko', model:'Tiger Neo JKM620N-66HL4M-BDV (bifacial N-type)', wp:620, voc:49.08, vmp:40.74, isc:16.08, imp:15.22, tVoc:-0.25, size:'2382 × 1134 × 30 mm', area:2.70, img:'', verify:'Voc interpolated from the 600–605 W datasheet columns.', url:'https://fvcomponentes.com/wp-content/uploads/2026/05/Data_Sheet_EN-1.pdf'},
+    {id:'CUSTOM', brand:'Custom', model:'Custom panel (enter specs below)', wp:580, voc:51.5, vmp:42.5, isc:14.3, imp:13.65, tVoc:-0.27, size:'', area:2.58, img:'', verify:'User-entered specs.', url:''}
+  ]
+};
+const CAT_LABEL = {hybrid:'Hybrid', offgrid:'Off-grid', gridtie:'Grid-tie'};
+
+/* ---------------- Login (client-side gate) ---------------- */
+const LOGIN_HASH = '2f41e2bdf8724accd88175d17a9e6661b4a15678b54560584a9a1a66ce5911a7'; // sha256("CODE|PASSWORD")
+function sha256(ascii){ // compact SHA-256 (works without crypto.subtle)
+  function rr(v,a){return (v>>>a)|(v<<(32-a));}
+  const mp=Math.pow, maxWord=mp(2,32); let result='', words=[], asciiBitLength=ascii.length*8;
+  let hash=[], k=[], primeCounter=0; const isComposite={};
+  for(let c=2;primeCounter<64;c++){ if(!isComposite[c]){ for(let i=0;i<313;i+=c) isComposite[i]=c;
+    hash[primeCounter]=(mp(c,.5)*maxWord)|0; k[primeCounter++]=(mp(c,1/3)*maxWord)|0; } }
+  hash=hash.slice(0,8); ascii+='\x80'; while(ascii.length%64-56) ascii+='\x00';
+  for(let i=0;i<ascii.length;i++){ const j=ascii.charCodeAt(i); words[i>>2]|=j<<((3-i)%4)*8; }
+  words[words.length]=((asciiBitLength/maxWord)|0); words[words.length]=asciiBitLength;
+  for(let j=0;j<words.length;){ const w=words.slice(j,j+=16), oldHash=hash; hash=hash.slice(0,8);
+    for(let i=0;i<64;i++){ const w15=w[i-15], w2=w[i-2], a=hash[0], e=hash[4];
+      const t1=hash[7]+(rr(e,6)^rr(e,11)^rr(e,25))+((e&hash[5])^((~e)&hash[6]))+k[i]
+        +(w[i]=(i<16)?w[i]:(w[i-16]+(rr(w15,7)^rr(w15,18)^(w15>>>3))+w[i-7]+(rr(w2,17)^rr(w2,19)^(w2>>>10)))|0);
+      const t2=(rr(a,2)^rr(a,13)^rr(a,22))+((a&hash[1])^(a&hash[2])^(hash[1]&hash[2]));
+      hash=[(t1+t2)|0].concat(hash); hash[4]=(hash[4]+t1)|0; }
+    for(let i=0;i<8;i++) hash[i]=(hash[i]+oldHash[i])|0; }
+  for(let i=0;i<8;i++) for(let j=3;j+1;j--){ const b=(hash[i]>>(j*8))&255; result+=((b<16)?0:'')+b.toString(16); }
+  return result;
+}
+const store = { get(k){try{return localStorage.getItem(k);}catch(e){return null;}}, set(k,v){try{localStorage.setItem(k,v);}catch(e){}},
+  sget(k){try{return sessionStorage.getItem(k);}catch(e){return null;}}, sset(k,v){try{sessionStorage.setItem(k,v);}catch(e){}}, sdel(k){try{sessionStorage.removeItem(k);}catch(e){}} };
+let SESSION_USER = null;
+function showApp(code){ SESSION_USER=code; document.getElementById('login').classList.add('hidden'); document.getElementById('app').classList.remove('hidden');
+  document.getElementById('whoLbl').textContent='Installer '+code; if(!S.set.preparedBy) S.set.preparedBy='Installer '+code; init(); }
+document.getElementById('loginForm').addEventListener('submit', e=>{
+  e.preventDefault();
+  const code=document.getElementById('lgCode').value.trim().toUpperCase(), pw=document.getElementById('lgPw').value;
+  if(sha256(code+'|'+pw)===LOGIN_HASH){ store.sset('exoid_auth',code); showApp(code); }
+  else document.getElementById('lgErr').textContent='Incorrect installer code or password.';
+});
+document.getElementById('btnLogout').onclick=()=>{ store.sdel('exoid_auth'); location.reload(); };
+
+/* ---------------- State ---------------- */
+const DEFAULT_SET = {
+  pricePerKW:50000, batAdder:0, rate:15.551, exportRate:7.0, escal:3, degr:0.4, years:25, export:'yes',
+  psh:4.5, pr:0.80, dayShare:40, invMargin:15, dod:90, eff:95, offOversize:20, vdPV:2, tMin:10, tCellMax:70, vdAC:3, wPerHP:850,
+  panel:'JK620', battery:'auto', inverter:'auto', preparedBy:'', ccEmail:'mgb@exoidrobotics.com', webhook:'',
+  custom:{wp:580, voc:51.5, vmp:42.5, isc:14.3, imp:13.65, tVoc:-0.27}
+};
+function monthsBack(){ const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; const d=new Date(); const out=[];
+  for(let i=1;i<=6;i++){ const x=new Date(d.getFullYear(), d.getMonth()-i, 1); out.push(m[x.getMonth()]+' '+x.getFullYear()); } return out; }
+function defaultState(){ return {
+  client:{name:'',email:'',phone:'',address:''},
+  sys:'hybrid', method:'history',
+  hyb:{basis:'night', outageH:4, backupKW:''}, off:{autonomy:1}, gt:{offset:100}, hybOffset:100,
+  hist:{months:monthsBack().map(l=>({label:l,kwh:'',bill:''})), peakKW:'', motorHP:'', motorInv:'yes', useBillRate:'yes'},
+  sched:{voltage:230, demand:0.75, loads:[]},
+  site:{roof:'', pvRun:20, acRun:15, batRun:2},
+  set:JSON.parse(JSON.stringify(DEFAULT_SET))
+};}
+let S = defaultState();
+try{ const saved=JSON.parse(store.get('exoid_solar_state')||'null'); if(saved){ S=Object.assign(defaultState(),saved); S.set=Object.assign(JSON.parse(JSON.stringify(DEFAULT_SET)),saved.set||{}); } }catch(e){}
+function save(){ store.set('exoid_solar_state', JSON.stringify(S)); }
+function getK(path){ return path.split('.').reduce((o,k)=>o==null?o:o[k], S); }
+function setK(path,val){ const ks=path.split('.'); let o=S; for(let i=0;i<ks.length-1;i++) o=o[ks[i]]; o[ks[ks.length-1]]=val; }
+const num = (v,d=0)=>{ const n=parseFloat(v); return isFinite(n)?n:d; };
+
+/* ---------------- Load categories ---------------- */
+const LOAD_CATS = {
+  light:  {name:'Lighting outlets',     desc:'LED lights',          w:10,   hrs:6,  when:'night', type:'res'},
+  co:     {name:'Convenience outlets',  desc:'General outlets (est.)', w:180, hrs:2, when:'all',   type:'res'},
+  fridge: {name:'Refrigerator',         desc:'Refrigerator',        w:150,  hrs:24, when:'all',   type:'invmotor'},
+  range:  {name:'Range / cooking',      desc:'Electric range / induction', w:2000, hrs:1, when:'day', type:'res'},
+  washer: {name:'Washing machine',      desc:'Washing machine',     w:500,  hrs:1,  when:'day',   type:'motor'},
+  heater: {name:'Water heater',         desc:'Instant water heater',w:3500, hrs:0.5,when:'day',   type:'res'},
+  ac:     {name:'Aircon',               desc:'Split-type aircon',   w:850,  hrs:8,  when:'night', type:'invmotor', hp:1},
+  pump:   {name:'Water pump',           desc:'Booster pump',        w:750,  hrs:1,  when:'day',   type:'motor'},
+  tv:     {name:'TV / entertainment',   desc:'TV',                  w:100,  hrs:5,  when:'night', type:'res'},
+  fan:    {name:'Electric fan',         desc:'Stand fan',           w:60,   hrs:8,  when:'all',   type:'motor'},
+  pc:     {name:'Computer / office',    desc:'Desktop / laptop',    w:200,  hrs:6,  when:'day',   type:'res'},
+  micro:  {name:'Microwave / oven',     desc:'Microwave',           w:1200, hrs:0.3,when:'day',   type:'res'},
+  cooker: {name:'Rice cooker / kettle', desc:'Rice cooker',         w:700,  hrs:0.5,when:'day',   type:'res'},
+  other:  {name:'Other',                desc:'',                    w:100,  hrs:1,  when:'all',   type:'res'}
+};
+const TYPE_SURGE = {res:1, motor:3, invmotor:1.5};
+const TYPE_LABEL = {res:'Resistive / electronic', motor:'Motor (non-inverter)', invmotor:'Inverter motor'};
+/* Energy factor = average share of rated (nameplate) watts drawn while the appliance is switched on.
+   Compressor loads: a non-inverter unit cycles ON/OFF at full power; an inverter unit runs longer at reduced speed,
+   using roughly 30–40% less energy for the same cooling. Typical planning values — editable per row. */
+const EF_TABLE = {
+  ac:     {res:100, motor:80, invmotor:55},
+  fridge: {res:100, motor:45, invmotor:30},
+  washer: {res:100, motor:100, invmotor:75},
+  pump:   {res:100, motor:100, invmotor:70},
+  fan:    {res:100, motor:100, invmotor:65},
+  _:      {res:100, motor:100, invmotor:75}
+};
+function defaultEF(cat,type){ return (EF_TABLE[cat]||EF_TABLE._)[type] ?? 100; }
+function efOf(l){ return (l.ef===undefined||l.ef==='') ? defaultEF(l.cat,l.type) : num(l.ef,100); }
+function loadKWh(l){ return num(l.w)*num(l.qty)*num(l.hrs)*efOf(l)/100/1000; }
+function newLoad(cat){ const c=LOAD_CATS[cat]; return {cat, desc:c.desc, hp:c.hp||'', w:c.w, qty:1, hrs:c.hrs, when:c.when, type:c.type, ef:defaultEF(cat,c.type), backup:true}; }
+
+/* ======================================================================
+   SIZING ENGINE
+   ====================================================================== */
+const STD_BREAKERS_AC = [10,16,20,25,32,40,50,63,80,100,125,160,200,250];
+const STD_BREAKERS_DC = [10,16,20,25,32,40,50,63,80,100,125,160,200,250,300,400,500,630];
+// Copper THHN/THWN-2 ampacity, 75°C column, ≤3 conductors in raceway, 30°C (PEC 2017 Table 3.10.1.16 metric sizes, conservative)
+const WIRE_TABLE = [ {mm2:2.0,a:20},{mm2:3.5,a:25},{mm2:5.5,a:35},{mm2:8.0,a:50},{mm2:14,a:65},{mm2:22,a:85},{mm2:30,a:100},{mm2:38,a:115},{mm2:50,a:145},{mm2:60,a:160},{mm2:80,a:185},{mm2:100,a:220},{mm2:125,a:250},{mm2:150,a:280} ];
+const PV_CABLE = [ {mm2:4,a:40},{mm2:6,a:52},{mm2:10,a:70} ]; // PV1-F / H1Z2Z2-K, single core, in conduit (conservative)
+const RHO = 0.0225; // Ω·mm²/m copper at ~75°C
+const pickUp = (arr,x)=> arr.find(v=>v>=x) || arr[arr.length-1];
+const groundFor = a => a<=20?2.0: a<=60?3.5: a<=100?5.5: a<=200?8.0: a<=400?14:22; // PEC Table 2.50.6.13 (approx. metric)
+const r1 = x=>Math.round(x*10)/10, r2=x=>Math.round(x*100)/100;
+const peso = x=>'₱'+Math.round(x).toLocaleString('en-PH');
+
+function getPanel(){ const set=S.set; let p=CATALOG.panels.find(x=>x.id===set.panel)||CATALOG.panels[0];
+  if(p.id==='CUSTOM'){ const c=set.custom; p=Object.assign({},p,{wp:num(c.wp),voc:num(c.voc),vmp:num(c.vmp),isc:num(c.isc),imp:num(c.imp),tVoc:num(c.tVoc,-0.27),area:num(c.wp)/1000/0.215}); }
+  return p; }
+
+function analyzeLoad(){
+  const set=S.set, out={warnings:[]};
+  if(S.method==='history'){
+    const ms=S.hist.months.filter(m=>num(m.kwh)>0);
+    if(!ms.length){ out.error='Enter at least the latest month\'s kWh.'; return out; }
+    const avgM = ms.reduce((a,m)=>a+num(m.kwh),0)/ms.length;
+    out.monthly = avgM; out.daily = avgM/30.42; out.monthsUsed=ms.length;
+    const withBill=ms.filter(m=>num(m.bill)>0);
+    if(withBill.length){ out.billRate = withBill.reduce((a,m)=>a+num(m.bill),0)/withBill.reduce((a,m)=>a+num(m.kwh),0); }
+    out.dayShare = num(set.dayShare,40)/100;
+    const avgKW = out.daily/24;
+    out.peakKW = num(S.hist.peakKW)>0 ? num(S.hist.peakKW) : Math.max(3, avgKW*3.5);
+    out.peakEstimated = !(num(S.hist.peakKW)>0);
+    const hp=num(S.hist.motorHP); const mw=hp*num(set.wPerHP,850);
+    out.motorW = mw; out.surgeKW = out.peakKW + (mw ? mw*((S.hist.motorInv==='yes'?TYPE_SURGE.invmotor:TYPE_SURGE.motor)-1)/1000 : out.peakKW*0.3);
+    out.backupPeakKW = out.peakKW; out.backupDaily = out.daily;
+    out.nightKWh = out.daily*(1-out.dayShare); out.backupNight=out.nightKWh;
+  } else {
+    const L=S.sched.loads; if(!L.length){ out.error='Add at least one load to the schedule.'; return out; }
+    let e=0, eDay=0, wDay=0, wNight=0, bwDay=0, bwNight=0, bE=0, bNight=0, maxSurgeExtra=0, maxSurgeExtraB=0, total=0;
+    L.forEach(l=>{ const W=num(l.w)*num(l.qty), E=loadKWh(l); total+=W; e+=E;
+      const dayFrac = l.when==='day'?1: l.when==='night'?0: 0.5; eDay+=E*dayFrac;
+      if(l.when!=='night'){ wDay+=W; if(l.backup) bwDay+=W; }
+      if(l.when!=='day'){ wNight+=W; if(l.backup) bwNight+=W; }
+      if(l.backup){ bE+=E; bNight+=E*(1-dayFrac); }
+      const extra = num(l.w)*(TYPE_SURGE[l.type]-1); if(extra>maxSurgeExtra) maxSurgeExtra=extra; if(l.backup && extra>maxSurgeExtraB) maxSurgeExtraB=extra;
+    });
+    const df=num(S.sched.demand,0.75);
+    out.connectedW=total; out.daily=e; out.monthly=e*30.42; out.dayShare = e? eDay/e : 0.4;
+    out.peakKW = Math.max(wDay,wNight)*df/1000; out.surgeKW = out.peakKW + maxSurgeExtra/1000;
+    out.backupPeakKW = Math.max(bwDay,bwNight)*df/1000; out.backupSurgeKW = out.backupPeakKW + maxSurgeExtraB/1000;
+    out.backupDaily=bE; out.nightKWh=e-eDay; out.backupNight=bNight;
+    if(num(S.sched.voltage,230)<200||num(S.sched.voltage,230)>240) out.warnings.push('Supply voltage outside 200–240 V; all equipment here is 230 V single-phase.');
+  }
+  return out;
+}
+
+function chooseInverter(type, needKW, pvW, surgeKW){
+  const set=S.set; let cands=CATALOG.inverters.filter(i=>i.type===type);
+  if(set.inverter!=='auto'){ const f=cands.filter(i=>i.id===set.inverter); if(f.length) cands=f; }
+  cands=cands.slice().sort((a,b)=>a.kw-b.kw);
+  const maxPar = Math.max(...cands.map(c=>c.parallel));
+  for(let n=1;n<=maxPar;n++){
+    for(const c of cands){ if(n>c.parallel) continue;
+      const okKW = n*c.kw >= needKW - 1e-9;
+      const okPV = n*c.maxPV >= pvW - 1e-9;
+      const okSurge = type==='gridtie' || n*c.kw*c.surge >= surgeKW - 1e-9 || c.surge<=1.0; // SPM surge checked separately
+      if(okKW && okPV && okSurge) return {inv:c, n};
+    }
+  }
+  const big=cands[cands.length-1]; return {inv:big, n:big.parallel, overflow:true};
+}
+
+function stringDesign(inv, panel, panelsPerInv){
+  const set=S.set; const tMin=num(set.tMin,10), tHot=num(set.tCellMax,70);
+  const vocCold = panel.voc*(1+panel.tVoc/100*(tMin-25));
+  const vmpHot  = panel.vmp*(1+panel.tVoc/100*(tHot-25));
+  const vmpCold = panel.vmp*(1+panel.tVoc/100*(tMin-25));
+  const nMax = Math.floor(inv.vdcMax/vocCold);
+  const nMin = Math.ceil(Math.max(inv.mpptMin, inv.startV)/vmpHot);
+  const slots = inv.mppt.map(iMax=>Math.min(2, Math.max(1, Math.floor(iMax/panel.imp+1e-9))));
+  const clip = inv.mppt.some(iMax=>iMax<panel.imp);
+  const maxSlots = slots.reduce((a,b)=>a+b,0);
+  const maxPanels = Math.floor(inv.maxPV/panel.wp);
+  let best=null;
+  for(let s=1;s<=maxSlots;s++) for(let n=nMin;n<=nMax;n++){
+    const p=s*n; if(p>maxPanels) continue;
+    const cand={s,n,p};
+    if(!best){best=cand;continue;}
+    const bOver=best.p>=panelsPerInv, cOver=p>=panelsPerInv;
+    if(cOver && !bOver) best=cand;
+    else if(cOver && bOver){ if(p<best.p || (p===best.p && s<best.s)) best=cand; }
+    else if(!cOver && !bOver){ if(p>best.p || (p===best.p && s<best.s)) best=cand; }
+  }
+  const res={vocCold,vmpHot,vmpCold,nMin,nMax,slots,clip,maxPanels};
+  if(!best || nMin>nMax){ res.error='No valid string length for '+inv.model+' with this panel (needs '+nMin+'–'+nMax+' in series).'; return res; }
+  // assign strings across MPPTs round-robin
+  const perMppt = inv.mppt.map(()=>0); let left=best.s;
+  while(left>0){ for(let i=0;i<perMppt.length&&left>0;i++){ if(perMppt[i]<slots[i]){perMppt[i]++;left--;} } }
+  return Object.assign(res,{strings:best.s, series:best.n, panels:best.p, perMppt,
+    stringVoc: best.n*vocCold, stringVmpHot: best.n*vmpHot, stringVmpCold: best.n*vmpCold});
+}
+
+function chooseBattery(nomKWh, demandA){
+  const set=S.set; let cands=CATALOG.batteries;
+  if(set.battery!=='auto') cands=cands.filter(b=>b.id===set.battery);
+  const opts=cands.map(b=>{ const byE=Math.ceil(nomKWh/b.kwh-1e-9), byI=Math.ceil(demandA/b.maxI-1e-9);
+    const n=Math.max(1,byE,byI); return {b,n,kwh:n*b.kwh,byE,byI}; });
+  opts.sort((x,y)=>{ const ub=o=>o.b.brand==='Ubetter'?0:1; // prefer Ubetter, then least oversize, then fewer units
+    if(ub(x)!==ub(y) && set.battery==='auto'){ const xo=x.n<=x.b.parallel, yo=y.n<=y.b.parallel; if(xo&&yo) return ub(x)-ub(y); }
+    if(Math.abs(x.kwh-y.kwh)>0.5) return x.kwh-y.kwh; return x.n-y.n; });
+  // Among Ubetter options choose least oversize, fewer units when similar
+  const ubs=opts.filter(o=>o.b.brand==='Ubetter' && o.n<=o.b.parallel);
+  if(set.battery==='auto' && ubs.length){ ubs.sort((x,y)=>x.kwh-y.kwh); const base=ubs[0]; const tol=Math.max(2.6, base.kwh*0.12); const near=ubs.filter(o=>o.kwh-base.kwh<=tol).sort((x,y)=>x.n-y.n||x.kwh-y.kwh); return near[0]; }
+  return opts[0];
+}
+
+function calculate(){
+  const set=S.set, R={warnings:[], notes:[]};
+  const L=analyzeLoad(); if(L.error) return {error:L.error};
+  R.load=L; R.warnings.push(...L.warnings);
+  R.rate = (S.method==='history' && S.hist.useBillRate==='yes' && L.billRate) ? L.billRate : num(set.rate,15.55);
+  R.rateFromBill = R.rate!==num(set.rate,15.55);
+  const panel=getPanel(); R.panel=panel;
+  const psh=num(set.psh,4.5), pr=num(set.pr,0.8), dod=num(set.dod,90)/100, eff=num(set.eff,95)/100;
+  const sys=S.sys; R.sys=sys;
+
+  // ---- PV size ----
+  let targetKWp;
+  if(sys==='offgrid') targetKWp = L.daily/(psh*pr)*(1+num(set.offOversize,20)/100);
+  else targetKWp = L.daily*(num(sys==='gridtie'?S.gt.offset:S.hybOffset,100)/100)/(psh*pr);
+  let panelsNeeded = Math.max(1, Math.ceil(targetKWp*1000/panel.wp - 1e-9));
+  if(num(S.site.roof)>0){ const maxByRoof=Math.floor(num(S.site.roof)/(panel.area*1.15));
+    if(panelsNeeded>maxByRoof){ R.warnings.push('Roof area limits the array to '+maxByRoof+' panels ('+r2(maxByRoof*panel.wp/1000)+' kWp) instead of '+panelsNeeded+'. Expect a lower solar offset.'); panelsNeeded=Math.max(1,maxByRoof); R.roofLimited=true; } }
+  R.targetKWp=targetKWp;
+
+  // ---- Inverter ----
+  const margin=1+num(set.invMargin,15)/100;
+  let needKW, surgeKW;
+  if(sys==='gridtie'){ needKW = panelsNeeded*panel.wp/1000/1.35; surgeKW=0; }
+  else if(sys==='hybrid'){ needKW = L.backupPeakKW*margin; surgeKW=(L.backupSurgeKW||L.surgeKW); }
+  else { needKW = L.peakKW*margin; surgeKW=L.surgeKW; }
+  R.needKW=needKW; R.surgeKW=surgeKW;
+  let pick=chooseInverter(sys, needKW, panelsNeeded*panel.wp, surgeKW);
+  // string design; if panels per inverter can't fit, add an inverter
+  let sd, guard=0;
+  const family = CATALOG.inverters.filter(i=>i.type===sys && (set.inverter==='auto'||i.id===set.inverter)).sort((a,b)=>a.kw-b.kw);
+  while(true){
+    const per=Math.ceil(panelsNeeded/pick.n);
+    sd=stringDesign(pick.inv, panel, per);
+    if(sd.error || sd.panels>=per || guard++>12) break;
+    // strings can't hold the panels: step up to the next model, else add a unit
+    const idx=family.indexOf(pick.inv);
+    if(idx>=0 && idx<family.length-1) pick={inv:family[idx+1], n:pick.n};
+    else if(pick.n<pick.inv.parallel) pick={inv:family[0]&&set.inverter==='auto'?pick.inv:pick.inv, n:pick.n+1};
+    else break;
+  }
+  if(pick.overflow) R.warnings.push('Load exceeds what '+pick.inv.parallel+' × '+pick.inv.model+' in parallel can supply. Split the loads, use a three-phase system, or bring in a larger commercial inverter.');
+  R.inv=pick.inv; R.invN=pick.n; R.sd=sd;
+  if(sd.error){ R.error=sd.error; return R; }
+  R.panels = sd.panels*pick.n; R.kWp = R.panels*panel.wp/1000;
+  if(sd.panels < Math.ceil(panelsNeeded/pick.n)) R.warnings.push('The array was trimmed to fit inverter PV limits: '+R.panels+' panels instead of '+panelsNeeded+'.');
+  if(R.panels>panelsNeeded) R.notes.push('Panel count rounded up from '+panelsNeeded+' to '+R.panels+' so all strings are equal length ('+sd.series+' in series).');
+  if(sd.clip) R.warnings.push('Panel Imp ('+panel.imp+' A) exceeds the inverter\'s MPPT current limit; the inverter will current-limit (small clipping loss, no damage). Use one string per MPPT.');
+  if(sys!=='gridtie' && pick.inv.surge<=1.0 && surgeKW > pick.n*pick.inv.kw){ R.warnings.push('Starting surge of backed-up loads (~'+r1(surgeKW)+' kW) is above the inverter\'s continuous rating. Confirm the SPM overload rating with Growatt, use inverter-type motors, or add a soft starter.'); }
+  if(pick.n>1 && sys!=='gridtie') R.notes.push(pick.n+' inverters run in parallel on one 230 V output. Use Growatt parallel cables, keep AC cables the same length, and share one common battery bank.');
+  if(pick.n>1 && sys==='gridtie') R.notes.push(pick.n+' grid-tie inverters each feed their own breaker on the main panel. No parallel kit is needed.');
+
+  // ---- Batteries ----
+  if(sys!=='gridtie'){
+    let usable;
+    if(sys==='offgrid'){ usable = L.daily*num(S.off.autonomy,1); }
+    else if(S.hyb.basis==='night'){ usable = L.backupNight; }
+    else { const bkw = num(S.hyb.backupKW)>0 ? num(S.hyb.backupKW) : L.backupPeakKW*0.5; usable = bkw*num(S.hyb.outageH,4); R.backupKWused=bkw; }
+    usable=Math.max(usable, 2);
+    const nom = usable/(dod*eff);
+    const demandA = pick.n*pick.inv.kw*1000/(48*0.95);
+    const bat=chooseBattery(nom, demandA);
+    R.bat=bat; R.batUsableReq=usable; R.batNomReq=nom; R.batDemandA=demandA;
+    R.batUsable = bat.kwh*dod;
+    if(bat.n>bat.b.parallel) R.warnings.push(bat.n+' batteries is more than the '+bat.b.parallel+'-unit parallel limit. Split into separate banks or use the larger battery model.');
+    if(bat.byI>bat.byE) R.notes.push('Battery quantity is set by current: the inverter can draw ~'+Math.round(demandA)+' A, and each battery supplies up to '+bat.b.maxI+' A.');
+    if(sys==='offgrid'){ const chg = pick.inv.chargeA*pick.n; R.notes.push('Total solar charge current: '+chg+' A (about '+r1(chg*54/1000)+' kW into the battery). The battery bank accepts up to '+bat.n*bat.b.maxI+' A.'); }
+  }
+
+  // ---- Electrical BOS ----
+  R.bos = bos(R, panel, sd, pick);
+
+  // ---- Energy & finance ----
+  R.fin = finance(R, L, panel);
+  return R;
+}
+
+function bos(R, panel, sd, pick){
+  const set=S.set, items=[], wires=[];
+  const inv=pick.inv, N=pick.n;
+  const totStrings = sd.strings*N;
+  const iscS = panel.isc, impS=panel.imp;
+  // PV side
+  const dcV = sd.stringVoc>500? 1000 : 600;
+  const strFuse = pickUp(STD_BREAKERS_DC, iscS*1.56);
+  const maxParPerMppt = Math.max(...sd.perMppt);
+  const pvIsoA = pickUp([16,20,25,32,40,50,63], iscS*1.25*maxParPerMppt);
+  const mpptInputs = sd.perMppt.filter(x=>x>0).length*N;
+  // PV cable selection by ampacity + voltage drop (per string run)
+  const run=num(S.site.pvRun,20);
+  let pvCable=PV_CABLE.find(c=>{ const I=impS; const vd=2*run*I*RHO/c.mm2; return c.a>=iscS*1.56 && vd/sd.stringVmpHot*100<=num(set.vdPV,2); }) || PV_CABLE[PV_CABLE.length-1];
+  const pvVD = 2*run*impS*RHO/pvCable.mm2/sd.stringVmpHot*100;
+  wires.push({circuit:'PV string → inverter (each string, +/−)', current:r1(iscS*1.25)+' A (1.25×Isc)', size:pvCable.mm2+' mm² PV1-F / H1Z2Z2-K solar cable', length:'2 × '+run+' m × '+totStrings+' strings = '+(2*run*totStrings)+' m', vd:r2(pvVD)+'%'});
+  items.push({cat:'PV protection', item:'DC isolator switch, '+dcV+' VDC, '+pvIsoA+' A, 2-pole', qty:mpptInputs, note:'One per MPPT input, near the inverter. Breaks the PV circuit under load.'});
+  items.push({cat:'PV protection', item:'DC surge protector Type II, '+(dcV===1000?'1000':'600')+' VDC (PV)', qty:mpptInputs, note:'Ucpv ≥ 1.2 × string Voc_cold ('+Math.round(sd.stringVoc)+' V).'});
+  if(maxParPerMppt>1) items.push({cat:'PV protection', item:'gPV string fuse '+strFuse+' A, '+dcV+' VDC + fuse holder (in PV combiner box)', qty:totStrings*2, note:'Needed when 2 or more strings are paralleled on one MPPT (+ and − legs).'});
+  items.push({cat:'PV protection', item:'PV combiner / DC box, IP65, with DIN rail', qty:N, note:'Houses the DC isolators, SPDs and fuses.'});
+  items.push({cat:'PV accessories', item:'MC4 connector pairs (1500 V, 30 A)', qty:totStrings*2+4, note:'Includes 4 spare pairs.'});
+  // AC side
+  const acI = inv.kw*1000/230;
+  const acBrk = pickUp(STD_BREAKERS_AC, acI*1.25);
+  const acRun=num(S.site.acRun,15);
+  let acW = WIRE_TABLE.find(w=> w.a>=acBrk && (2*acRun*acI*RHO/w.mm2)/230*100<=num(set.vdAC,3)) || WIRE_TABLE[WIRE_TABLE.length-1];
+  const acVD=(2*acRun*acI*RHO/acW.mm2)/230*100;
+  const label = R.sys==='gridtie'?'Inverter AC output → main panel (grid)': 'Inverter AC output → backup/load panel';
+  wires.push({circuit:label+(N>1?' (each inverter)':''), current:r1(acI)+' A', size:'2 × '+acW.mm2+' mm² THHN/THWN-2 Cu + '+groundFor(acBrk)+' mm² green ground', length:acRun+' m', vd:r2(acVD)+'%'});
+  items.push({cat:'AC protection', item:'AC breaker 2-pole, '+acBrk+' A (inverter output)', qty:N, note:'1.25 × inverter rated current ('+r1(acI)+' A).'});
+  if(R.sys!=='gridtie'){
+    items.push({cat:'AC protection', item:'AC breaker 2-pole, '+acBrk+' A (grid input to inverter)', qty:N, note:'For grid / AC input. Size up if the inverter passes extra grid load through.'});
+    const totI = N*acI; const mtsA=pickUp([32,40,63,80,100,125,160,200,250], totI*1.25);
+    items.push({cat:'AC switching', item:'Manual bypass changeover switch (MTS), 2-pole, '+mtsA+' A', qty:1, note:'Lets you power loads straight from the grid during inverter service.'});
+    items.push({cat:'AC switching', item:'ATS (automatic transfer switch), 2-pole, '+mtsA+' A — optional', qty:R.sys==='offgrid'?1:0, note:R.sys==='offgrid'?'Only if a generator is used. The SPF already has a built-in transfer switch between AC input and inverter.':'Not needed: the SPM switches to backup automatically (<10 ms). Add one only for a generator or whole-house changeover.'});
+  }
+  items.push({cat:'AC protection', item:'AC surge protector Type II, 275 V, 2-pole', qty:R.sys==='gridtie'?1:2, note:R.sys==='gridtie'?'At the main panel.':'At the inverter AC output and the grid input.'});
+  if(R.sys!=='offgrid') items.push({cat:'Metering', item:'Growatt-compatible smart energy meter / CT', qty:1, note:'Used for export limiting and self-consumption monitoring (and the net-metering setup).'});
+  items.push({cat:'Monitoring', item:'Growatt Shine Wi-Fi datalogger', qty:N, note:'Remote monitoring on the ShinePhone app.'});
+  // Battery side
+  if(R.bat){
+    const b=R.bat.b, n=R.bat.n;
+    const iInv = inv.kw*1000/(48*0.95);          // per inverter
+    const iMain = iInv*N*1.25;
+    const mainBrk = pickUp(STD_BREAKERS_DC, iMain);
+    const perBatI = Math.min(b.maxI, iInv*N/n)*1.25;
+    const batBrk = pickUp(STD_BREAKERS_DC, perBatI);
+    const invBrk = pickUp(STD_BREAKERS_DC, iInv*1.25);
+    const batRun=num(S.site.batRun,2);
+    const wInv = WIRE_TABLE.find(w=>w.a>=invBrk && (2*batRun*iInv*RHO/w.mm2)/48*100<=1.5) || WIRE_TABLE[WIRE_TABLE.length-1];
+    const wBat = WIRE_TABLE.find(w=>w.a>=batBrk) || WIRE_TABLE[WIRE_TABLE.length-1];
+    items.push({cat:'Battery protection', item:'DC breaker / MCCB '+invBrk+' A, ≥80 VDC (battery → each inverter)', qty:N, note:'1.25 × max battery current per inverter ('+Math.round(iInv)+' A).'});
+    if(n>1){ items.push({cat:'Battery protection', item:'DC busbar pair (+/−), rated ≥ '+mainBrk+' A', qty:1, note:'Common point for '+n+' batteries in parallel (and '+N+' inverter'+(N>1?'s':'')+'). Feed from opposite corners so the batteries share current evenly.'}); }
+    items.push({cat:'Battery protection', item:'Battery module breaker '+batBrk+' A (most wall batteries have one built in)', qty:n, note:'Check whether the Ubetter unit has an internal breaker; if not, fit one per battery.'});
+    items.push({cat:'Battery accessories', item:'Battery communication cable (CAN/RS485, BMS → inverter)', qty:1+(n>1?n-1:0), note:'One BMS link to the inverter plus daisy-chain links between batteries. Set the inverter battery type to "Lithium" with the matching protocol.'});
+    wires.push({circuit:'Battery bank → inverter'+(N>1?' (each)':''), current:Math.round(iInv)+' A', size:'2 × '+wInv.mm2+' mm² fine-strand Cu (welding/battery cable) with crimped lugs', length:batRun+' m', vd:r2((2*batRun*iInv*RHO/wInv.mm2)/48*100)+'%'});
+    if(n>1) wires.push({circuit:'Each battery → busbar', current:Math.round(perBatI/1.25)+' A', size:'2 × '+wBat.mm2+' mm² fine-strand Cu, equal lengths', length:'≤1 m', vd:'—'});
+  }
+  // Grounding & mounting
+  items.push({cat:'Grounding', item:'Ground rod, 16 mm (5/8") × 3 m (10 ft), copper-clad, with clamp', qty:R.panels>24?2:1, note:'Target ≤ 25 Ω; bond PV frames, rails, inverter and panel board.'});
+  wires.push({circuit:'PV frame / rail bonding & equipment ground', current:'—', size:'5.5 mm² green Cu (min.)', length:'site', vd:'—'});
+  const rows = Math.ceil(R.panels/ Math.min(R.panels, 10));
+  items.push({cat:'Mounting', item:'Aluminum rails (pair per row of panels)', qty:Math.ceil(R.panels*1.15*2/4.2), note:'4.2 m lengths, approx. Final count from the roof layout.'});
+  items.push({cat:'Mounting', item:'Mid clamps / end clamps / L-feet or roof hooks', qty:'≈ '+(R.panels*2)+' / '+(rows*4)+' / '+Math.ceil(R.panels*1.15*2/1.2), note:'Estimate. Depends on roof type (metal, tile, concrete).'});
+  items.push({cat:'Conduit', item:'PVC/IMC conduit, fittings, cable ties (UV-rated), labels', qty:'lot', note:'Label the DC isolators, battery and dual-supply warning signs (PEC Art. 6.90).'});
+  return {items, wires, dcV, strFuse};
+}
+
+function finance(R, L, panel){
+  const set=S.set, rate=R.rate, exp=num(set.exportRate,7), esc=num(set.escal,3)/100, deg=num(set.degr,0.4)/100, years=Math.round(num(set.years,25));
+  const eff=num(set.eff,95)/100;
+  const ePV1 = R.kWp*num(set.psh,4.5)*num(set.pr,0.8);
+  const exportAllowed = R.sys!=='offgrid' && set.export==='yes';
+  const D=L.daily*L.dayShare, Nn=L.daily-D;
+  function day(ePV){ const direct=Math.min(ePV,D); let sur=ePV-direct, fromBat=0;
+    if(R.bat){ const toBat=Math.min(sur, R.batUsable, Nn/eff); fromBat=Math.min(toBat*eff, Nn); sur-=toBat; }
+    const exported = exportAllowed? sur:0; return {direct, fromBat, exported, curtailed: exportAllowed?0:sur}; }
+  const d1=day(ePV1);
+  const priceSys = R.kWp*num(set.pricePerKW,50000) + (R.bat? R.bat.kwh*num(set.batAdder,0):0);
+  let cum=-priceSys, payback=null; const flows=[]; let total=0;
+  for(let y=1;y<=years;y++){ const dd=day(ePV1*Math.pow(1-deg,y-1)); const r=rate*Math.pow(1+esc,y-1), xr=exp*Math.pow(1+esc,y-1);
+    const sav=365*((dd.direct+dd.fromBat)*r + dd.exported*xr); total+=sav; const prev=cum; cum+=sav; flows.push({y,sav,cum});
+    if(payback===null && cum>=0) payback = (y-1) + (-prev)/sav; }
+  const yr1 = flows[0].sav;
+  return { ePV1, ePVyr:ePV1*365, d1, solarFraction: Math.min(1,(d1.direct+d1.fromBat)/L.daily), offset: Math.min(1, (exportAllowed? ePV1 : (d1.direct+d1.fromBat))/L.daily), price:priceSys, yr1, monthly1:yr1/12,
+    payback, total, net: total-priceSys, roi:(total-priceSys)/priceSys*100, flows, exportAllowed,
+    billBefore: L.monthly*rate, billAfter: Math.max(0, L.monthly*rate - yr1/12) };
+}
+
+/* ======================================================================
+   UI
+   ====================================================================== */
+let LAST=null;
+function init(){
+  // tabs
+  document.querySelectorAll('nav.tabs button').forEach(b=>b.onclick=()=>showTab(b.dataset.tab));
+  // equipment selects
+  const sp=document.getElementById('selPanel'); sp.innerHTML=CATALOG.panels.map(p=>`<option value="${p.id}">${p.brand} ${p.model}</option>`).join('');
+  const sb=document.getElementById('selBattery'); sb.innerHTML='<option value="auto">Auto (prefer Ubetter)</option>'+CATALOG.batteries.map(p=>`<option value="${p.id}">${p.brand} ${p.model}</option>`).join('');
+  const si=document.getElementById('selInverter'); si.innerHTML='<option value="auto">Auto (best fit per system type)</option>'+CATALOG.inverters.map(p=>`<option value="${p.id}">${p.brand} ${p.model} (${CAT_LABEL[p.type]})</option>`).join('');
+  document.getElementById('addCat').innerHTML=Object.entries(LOAD_CATS).map(([k,c])=>`<option value="${k}">${c.name}</option>`).join('');
+  bindInputs(document);
+  document.querySelectorAll('#segSys button').forEach(b=>b.onclick=()=>{S.sys=b.dataset.v; save(); renderSys();});
+  document.querySelectorAll('#segMethod button').forEach(b=>b.onclick=()=>{S.method=b.dataset.v; save(); renderMethod();});
+  document.getElementById('btnAddLoad').onclick=()=>{ S.sched.loads.push(newLoad(document.getElementById('addCat').value)); save(); renderLoads(); };
+  document.getElementById('btnPresetLoads').onclick=()=>{ if(S.sched.loads.length && !confirmInline()) return; S.sched.loads=presetLoads(); save(); renderLoads(); };
+  document.getElementById('btnCalc').onclick=runCalc;
+  document.getElementById('btnNew').onclick=()=>{ const keepSet=S.set; S=defaultState(); S.set=keepSet; save(); renderAll(); showTab('input'); };
+  document.getElementById('btnResetSettings').onclick=()=>{ const pb=S.set.preparedBy; S.set=JSON.parse(JSON.stringify(DEFAULT_SET)); S.set.preparedBy=pb; save(); renderAll(); };
+  renderAll();
+}
+function confirmInline(){ return true; } // no blocking dialogs inside the embed
+function showTab(t){ document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
+  ['input','results','settings','catalog'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t)); window.scrollTo(0,0); }
+function bindInputs(root){
+  root.querySelectorAll('[data-k]').forEach(el=>{
+    const v=getK(el.dataset.k); if(v!==undefined && v!==null) el.value=v;
+    el.oninput=el.onchange=()=>{ setK(el.dataset.k, el.type==='number'? (el.value===''?'':parseFloat(el.value)) : el.value); save();
+      if(el.dataset.k==='set.panel') renderCustomPanel(); };
+  });
+}
+function renderAll(){ bindInputs(document); renderSys(); renderMethod(); renderHist(); renderLoads(); renderCustomPanel(); renderCatalog(); }
+function renderSys(){
+  document.querySelectorAll('#segSys button').forEach(b=>b.classList.toggle('on',b.dataset.v===S.sys));
+  const hint={hybrid:'Grid-connected with battery backup. Solar runs the house in the day, charges the battery, and can export to the grid (net-metering). During an outage the battery carries the <b>backed-up</b> loads. Inverter: Growatt SPM series.',
+    offgrid:'No grid connection (or the grid only charges the battery). Solar and battery must carry <b>all</b> loads, so this needs a bigger array and battery. Inverter: Growatt SPF series, with a built-in transfer switch.',
+    gridtie:'Lowest cost, fastest payback. No battery, so there is <b>no power during outages</b>. Excess solar is exported under net-metering. Inverter: Growatt MIN TL-X series.'}[S.sys];
+  document.getElementById('sysHint').innerHTML=hint;
+  const o=document.getElementById('sysOpts');
+  if(S.sys==='hybrid') o.innerHTML=`
+    <div><label>Solar offset target (% of consumption)</label><input type="number" data-k="hybOffset"></div>
+    <div><label>Battery sized to cover</label><select data-k="hyb.basis" id="hybBasis"><option value="night">Night-time usage of backed-up loads</option><option value="hours">Outage hours × backup load</option></select></div>
+    <div class="hb"><label>Outage hours to cover</label><input type="number" data-k="hyb.outageH"></div>
+    <div class="hb"><label>Average backup load during outage (kW)</label><input type="number" step="0.1" data-k="hyb.backupKW" placeholder="auto"></div>`;
+  else if(S.sys==='offgrid') o.innerHTML=`<div><label>Days of autonomy (battery)</label><input type="number" step="0.5" min="0.5" data-k="off.autonomy"></div>
+    <div style="grid-column:span 3" class="small">1 day = the battery holds one full day of consumption, for cloudy days and nights. Use 1.5–2 for critical sites.</div>`;
+  else o.innerHTML=`<div><label>Solar offset target (% of consumption)</label><input type="number" data-k="gt.offset"></div>`;
+  bindInputs(o);
+  const hb=document.getElementById('hybBasis'); if(hb){ const f=()=>o.querySelectorAll('.hb').forEach(x=>x.style.opacity=S.hyb.basis==='hours'?1:.45); hb.addEventListener('change',f); f(); }
+}
+function renderMethod(){
+  document.querySelectorAll('#segMethod button').forEach(b=>b.classList.toggle('on',b.dataset.v===S.method));
+  document.getElementById('mHistory').classList.toggle('hidden',S.method!=='history');
+  document.getElementById('mSchedule').classList.toggle('hidden',S.method!=='schedule');
+}
+function renderHist(){
+  const tb=document.getElementById('histBody');
+  tb.innerHTML=S.hist.months.map((m,i)=>`<tr><td>${i===0?'<b>'+m.label+'</b> <span class="pill">latest — required</span>':m.label}</td>
+    <td><input type="number" min="0" data-k="hist.months.${i}.kwh" placeholder="kWh"></td>
+    <td><input type="number" min="0" data-k="hist.months.${i}.bill" placeholder="₱"></td></tr>`).join('');
+  bindInputs(tb);
+}
+function renderLoads(){
+  const tb=document.getElementById('loadBody'); const L=S.sched.loads;
+  tb.innerHTML=L.map((l,i)=>`<tr>
+    <td><select data-i="${i}" data-f="cat">${Object.entries(LOAD_CATS).map(([k,c])=>`<option value="${k}" ${k===l.cat?'selected':''}>${c.name}</option>`).join('')}</select></td>
+    <td><input data-i="${i}" data-f="desc" value="${(l.desc||'').replace(/"/g,'&quot;')}"></td>
+    <td>${l.cat==='ac'?`<input type="number" step="0.5" min="0" data-i="${i}" data-f="hp" value="${l.hp}">`:'<span class="small">—</span>'}</td>
+    <td><input type="number" min="0" data-i="${i}" data-f="w" value="${l.w}"></td>
+    <td><input type="number" min="0" data-i="${i}" data-f="qty" value="${l.qty}"></td>
+    <td><input type="number" min="0" max="24" step="0.5" data-i="${i}" data-f="hrs" value="${l.hrs}"></td>
+    <td><select data-i="${i}" data-f="when"><option value="day" ${l.when==='day'?'selected':''}>Day</option><option value="night" ${l.when==='night'?'selected':''}>Night</option><option value="all" ${l.when==='all'?'selected':''}>Day &amp; night</option></select></td>
+    <td><select data-i="${i}" data-f="type">${Object.entries(TYPE_LABEL).map(([k,v])=>`<option value="${k}" ${k===l.type?'selected':''}>${v}</option>`).join('')}</select></td>
+    <td><input type="number" min="5" max="100" step="5" data-i="${i}" data-f="ef" value="${efOf(l)}"></td>
+    <td style="text-align:center"><input type="checkbox" data-i="${i}" data-f="backup" ${l.backup?'checked':''}></td>
+    <td class="num" id="lw${i}"></td><td class="num" id="le${i}"></td>
+    <td><button class="btn ghost sm" data-del="${i}" title="Remove">✕</button></td></tr>`).join('') || `<tr><td colspan="13" class="small" style="padding:14px">No loads yet. Add them one by one, or load the typical-house example and edit it.</td></tr>`;
+  tb.querySelectorAll('[data-f]').forEach(el=>{ el.oninput=el.onchange=()=>{ const l=S.sched.loads[+el.dataset.i], f=el.dataset.f;
+      if(f==='backup') l.backup=el.checked; else if(['w','qty','hrs','hp','ef'].includes(f)) l[f]=el.value===''?'':parseFloat(el.value); else l[f]=el.value;
+      if(f==='hp'){ l.w=Math.round(num(l.hp)*num(S.set.wPerHP,850)); tb.querySelector(`[data-i="${el.dataset.i}"][data-f="w"]`).value=l.w; }
+      if(f==='cat'){ const c=LOAD_CATS[l.cat]; Object.assign(l,{desc:c.desc,w:c.w,hrs:c.hrs,when:c.when,type:c.type,hp:c.hp||'',ef:defaultEF(l.cat,c.type)}); save(); renderLoads(); return; }
+      if(f==='type'){ l.ef=defaultEF(l.cat,l.type); const e2=tb.querySelector(`[data-i="${el.dataset.i}"][data-f="ef"]`); if(e2) e2.value=l.ef; }
+      save(); loadTotals(); }; });
+  tb.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>{ S.sched.loads.splice(+b.dataset.del,1); save(); renderLoads(); });
+  loadTotals();
+}
+function loadTotals(){ let W=0,E=0; S.sched.loads.forEach((l,i)=>{ const w=num(l.w)*num(l.qty), e=loadKWh(l); W+=w; E+=e;
+  const a=document.getElementById('lw'+i), b=document.getElementById('le'+i); if(a) a.textContent=Math.round(w).toLocaleString(); if(b) b.textContent=r2(e); });
+  document.getElementById('ltW').textContent=Math.round(W).toLocaleString(); document.getElementById('ltE').textContent=r2(E); }
+function presetLoads(){ const mk=(cat,o)=>Object.assign(newLoad(cat),o||{});
+  return [ mk('light',{qty:15}), mk('co',{qty:10}), mk('fridge'), mk('range',{w:2000,qty:1}), mk('washer'), mk('heater',{qty:1,backup:false}),
+    mk('ac',{desc:'Bedroom aircon 1HP inverter',hp:1,w:850,qty:2,hrs:8}), mk('ac',{desc:'Living room aircon 2HP inverter',hp:2,w:1700,qty:1,hrs:5,when:'day',backup:false}),
+    mk('tv',{qty:2}), mk('pump'), mk('fan',{qty:3}), mk('cooker') ]; }
+function renderCustomPanel(){ const c=document.getElementById('customPanel');
+  if(S.set.panel!=='CUSTOM'){ c.innerHTML=''; return; }
+  c.innerHTML=[['wp','Pmax (W)'],['voc','Voc (V)'],['vmp','Vmp (V)'],['isc','Isc (A)'],['imp','Imp (A)'],['tVoc','Temp. coeff. Voc (%/°C)']].map(([k,l])=>`<div><label>${l}</label><input type="number" step="0.01" data-k="set.custom.${k}"></div>`).join('');
+  bindInputs(c); }
+function renderCatalog(){
+  const row=(x,specs)=>`<tr><td><div class="imgslot">${x.img?`<img src="${x.img}" alt="">`:'photo<br>slot'}</div></td><td><b>${x.brand} ${x.model}</b> ${x.verify?'<span class="pill v" title="'+x.verify.replace(/"/g,'')+'">verify</span>':''}<div class="small">${specs}</div>${x.verify?`<div class="small" style="color:var(--warn)">${x.verify}</div>`:''}</td><td>${x.url?`<a href="${x.url}" target="_blank" rel="noopener">Datasheet</a>`:''}</td></tr>`;
+  const inv=['hybrid','offgrid','gridtie'].map(t=>`<h3 style="margin-top:14px">${CAT_LABEL[t]} inverters</h3><table>${CATALOG.inverters.filter(i=>i.type===t).map(i=>row(i,
+    `${i.kw} kW · max PV ${i.maxPV/1000} kWp · DC max ${i.vdcMax} V · MPPT ${i.mpptMin}–${i.mpptMax} V · ${i.mppt.length} MPPT (${i.mppt.join('/')} A)${i.surge>1?' · surge '+(i.kw*i.surge)+' kVA':''}${i.type!=='gridtie'?' · 48 V battery':''} · parallel up to ${i.parallel}`)).join('')}</table>`).join('');
+  const bat=`<h3 style="margin-top:14px">Batteries</h3><table>${CATALOG.batteries.map(b=>row(b,`${b.v} V · ${b.ah} Ah · ${b.kwh} kWh · max ${b.maxI} A · up to ${b.parallel} in parallel · LiFePO4`)).join('')}</table>`;
+  const pan=`<h3 style="margin-top:14px">Solar panels</h3><table>${CATALOG.panels.map(p=>row(p,`${p.wp} W · Voc ${p.voc} V · Vmp ${p.vmp} V · Isc ${p.isc} A · Imp ${p.imp} A · Voc coeff ${p.tVoc}%/°C ${p.size?'· '+p.size:''}`)).join('')}</table>`;
+  document.getElementById('catalogView').innerHTML=inv+bat+pan;
+}
+
+/* ---------------- Results rendering ---------------- */
+function runCalc(){
+  const note=document.getElementById('calcNote');
+  if(!S.client.email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(S.client.email)){ note.innerHTML='<span style="color:var(--err)">Client email is required (quotes are sent there).</span>'; document.getElementById('cEmail').focus(); return; }
+  note.textContent='';
+  const R=calculate(); LAST=R;
+  document.getElementById('resultsEmpty').classList.add('hidden');
+  const box=document.getElementById('results'); box.classList.remove('hidden');
+  if(R.error && !R.inv){ box.innerHTML=`<div class="errbox">${R.error}</div>`; showTab('results'); return; }
+  box.innerHTML=renderResults(R); showTab('results');
+  document.getElementById('btnPrint').onclick=()=>window.print();
+  document.getElementById('btnEmail').onclick=()=>emailQuote(R);
+  document.getElementById('btnCopy').onclick=()=>{ const t=quoteText(R); (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>flash('Summary copied.')).catch(()=>flash('Copy not allowed here. Select the text in the proposal instead.')); };
+}
+function flash(msg){ const el=document.getElementById('flashMsg'); if(el){ el.textContent=msg; setTimeout(()=>el.textContent='',5000); } }
+
+function renderResults(R){
+  const L=R.load, f=R.fin, sd=R.sd, inv=R.inv, p=R.panel, set=S.set;
+  const today=new Date().toLocaleDateString('en-PH',{year:'numeric',month:'long',day:'numeric'});
+  const sysName={hybrid:'Hybrid solar (grid-tied with battery backup)',offgrid:'Off-grid solar with battery storage',gridtie:'Grid-tie solar (net-metering, no battery)'}[R.sys];
+  const warn = R.warnings.map(w=>`<div class="warnbox">⚠ ${w}</div>`).join('') + (R.error?`<div class="errbox">${R.error}</div>`:'');
+  const notes = R.notes.map(w=>`<div class="okbox">${w}</div>`).join('');
+  // equipment table
+  const eq=[];
+  eq.push({img:p.img,item:'Solar panels', model:`${p.brand} ${p.model}`, spec:`${p.wp} W each · Voc ${p.voc} V · Isc ${p.isc} A`, qty:R.panels, url:p.url});
+  eq.push({img:inv.img,item:CAT_LABEL[inv.type]+' inverter', model:`${inv.brand} ${inv.model}`, spec:`${inv.kw} kW, 230 V single-phase · ${inv.mppt.length} MPPT · max PV ${inv.maxPV/1000} kWp${inv.type!=='gridtie'?' · 48 V battery':''}`, qty:R.invN, url:inv.url});
+  if(R.bat) eq.push({img:R.bat.b.img,item:'Battery (LiFePO4)', model:`${R.bat.b.brand} ${R.bat.b.model}`, spec:`${R.bat.b.kwh} kWh each · ${R.bat.b.v} V · total ${r2(R.bat.kwh)} kWh (${r1(R.batUsable)} kWh usable)`, qty:R.bat.n, url:R.bat.b.url});
+  const eqRows=eq.map(e=>`<tr><td><div class="imgslot">${e.img?`<img src="${e.img}" alt="">`:'photo'}</div></td><td><b>${e.item}</b><div>${e.model}</div><div class="small">${e.spec}</div></td><td class="num" style="font-size:18px;font-weight:700">${e.qty}</td><td class="noprint">${e.url?`<a href="${e.url}" target="_blank" rel="noopener">Datasheet</a>`:''}</td></tr>`).join('');
+  // configuration text
+  const mpptTxt = sd.perMppt.map((c,i)=>c?`MPPT ${i+1}: ${c} string${c>1?'s':''} × ${sd.series} panels`:`MPPT ${i+1}: unused`).join(' · ');
+  const cfg = `<ul style="margin:6px 0 0 18px;padding:0">
+    <li><b>PV array:</b> ${R.panels} panels = ${R.invN>1?R.invN+' inverters × ':''}${sd.strings} string${sd.strings>1?'s':''} × ${sd.series} panels <b>in series</b>${sd.strings>1?' (strings on separate MPPTs'+(Math.max(...sd.perMppt)>1?', or paralleled where 2 share one MPPT':'')+')':''}. ${R.invN>1?'Per inverter — ':''}${mpptTxt}.</li>
+    <li><b>String voltage:</b> Voc at ${set.tMin}°C = ${Math.round(sd.stringVoc)} V (limit ${inv.vdcMax} V) · Vmp hot = ${Math.round(sd.stringVmpHot)} V, Vmp cold = ${Math.round(sd.stringVmpCold)} V (MPPT window ${inv.mpptMin}–${inv.mpptMax} V) · allowed string length ${sd.nMin}–${sd.nMax} panels.</li>
+    <li><b>Inverter${R.invN>1?'s':''}:</b> ${R.invN} × ${inv.model}${R.invN>1?(R.sys==='gridtie'?' — independent, each on its own AC breaker':' — <b>in parallel</b> (same phase, parallel comm. cables)'):''}; total ${r1(R.invN*inv.kw)} kW continuous${inv.surge>1?', '+r1(R.invN*inv.kw*inv.surge)+' kVA surge':''}.</li>
+    ${R.bat?`<li><b>Battery bank:</b> ${R.bat.n} × ${R.bat.b.kwh} kWh, all <b>in parallel</b> at 51.2 V nominal (48 V system). <b>Never connect these batteries in series.</b> ${R.bat.n>1?'Connect through a common busbar, with equal cable lengths.':''} Link the BMS to the inverter with the CAN/RS485 cable.</li>`:''}
+  </ul>`;
+  // bos tables
+  const bosRows=R.bos.items.filter(i=>i.qty!==0).map(i=>`<tr><td class="small">${i.cat}</td><td>${i.item}</td><td class="num">${i.qty}</td><td class="small">${i.note}</td></tr>`).join('');
+  const wireRows=R.bos.wires.map(w=>`<tr><td>${w.circuit}</td><td>${w.current}</td><td><b>${w.size}</b></td><td class="small">${w.length}</td><td class="num">${w.vd}</td></tr>`).join('');
+  // finance
+  const pb = f.payback!==null? r1(f.payback)+' years' : '> '+set.years+' years';
+  const chart = cashChart(f);
+  return `
+  <div class="card noprint"><div class="row">
+    <button class="btn" id="btnEmail">✉ Email quote to client (CC ${set.ccEmail||'—'})</button>
+    <button class="btn sec" id="btnPrint">Print / Save as PDF</button>
+    <button class="btn ghost" id="btnCopy">Copy summary</button>
+    <span class="small" id="flashMsg"></span></div>
+    ${warn}${notes}
+  </div>
+  <div class="card prop">
+    <div class="head"><div><h1>Solar PV System Proposal</h1><div>${sysName}</div></div>
+      <div style="text-align:right"><b>Exoid Robotics</b><div class="small">www.exoidrobotics.com</div><div class="small">${today}</div><div class="small">Prepared by: ${esc(set.preparedBy)}</div></div></div>
+    <div class="grid g2"><div><div class="small">Client</div><b>${esc(S.client.name)||'—'}</b><div class="small">${esc(S.client.address)} ${S.client.phone?' · '+esc(S.client.phone):''}</div><div class="small">${esc(S.client.email)}</div></div>
+      <div><div class="small">Basis of design</div>${S.method==='history'?`Average of ${L.monthsUsed} month(s) of bills: <b>${Math.round(L.monthly)} kWh/month</b>`:`Schedule of loads: <b>${r1(L.daily)} kWh/day</b>, connected ${Math.round(L.connectedW).toLocaleString()} W`}
+      <div class="small">Peak demand ${r1(L.peakKW)} kW${L.peakEstimated?' (estimated)':''} · motor starting ~${r1(L.surgeKW)} kW · ${Math.round(L.dayShare*100)}% daytime use</div></div></div>
+    <h3 style="margin-top:16px">System summary</h3>
+    <div class="kpis">
+      <div class="kpi"><div class="v">${r2(R.kWp)} kWp</div><div class="l">Solar capacity (${R.panels} × ${p.wp} W)</div></div>
+      <div class="kpi"><div class="v">${r1(R.invN*inv.kw)} kW</div><div class="l">Inverter (${R.invN} × ${inv.model})</div></div>
+      <div class="kpi"><div class="v">${R.bat?r2(R.bat.kwh)+' kWh':'—'}</div><div class="l">${R.bat?`Battery (${R.bat.n} × ${R.bat.b.kwh} kWh, ${r1(R.batUsable)} kWh usable)`:'No battery (grid-tie)'}</div></div>
+      <div class="kpi"><div class="v">${Math.round(f.ePVyr).toLocaleString()} kWh</div><div class="l">Est. solar production, year 1</div></div>
+      <div class="kpi"><div class="v">${Math.round(f.offset*100)}%</div><div class="l">${f.exportAllowed?'Bill offset (incl. net-metering export)':'Of consumption supplied by solar'}</div></div>
+      ${R.sys!=='gridtie'?`<div class="kpi"><div class="v">${Math.round(f.solarFraction*100)}%</div><div class="l">Self-supplied (solar + battery, no grid)</div></div>`:''}
+    </div>
+
+    <h3 style="margin-top:18px">Recommended equipment</h3>
+    <table><thead><tr><th style="width:66px"></th><th>Item</th><th class="num">Qty</th><th class="noprint"></th></tr></thead><tbody>${eqRows}</tbody></table>
+
+    <h3 style="margin-top:18px">Configuration (series / parallel)</h3>
+    ${cfg}
+    <div class="diagram" style="margin-top:10px">${diagram(R)}</div>
+
+    <h3 style="margin-top:18px">Protection, switching &amp; accessories</h3>
+    <div class="tablewrap"><table><thead><tr><th>Group</th><th>Item</th><th class="num">Qty</th><th>Notes</th></tr></thead><tbody>${bosRows}</tbody></table></div>
+
+    <h3 style="margin-top:18px">Wire sizing</h3>
+    <div class="tablewrap"><table><thead><tr><th>Circuit</th><th>Design current</th><th>Conductor</th><th>Length</th><th class="num">V-drop</th></tr></thead><tbody>${wireRows}</tbody></table></div>
+    <p class="small">AC conductors sized to the 75°C copper column of PEC 2017 Table 3.10.1.16 (≤3 current-carrying conductors, 30°C), and not smaller than the breaker rating. Derate for hot roofs, conduit fill and bundling, and check the inverter terminal limits before installing.</p>
+
+    <h3 style="margin-top:18px">Investment &amp; savings</h3>
+    <div class="kpis">
+      <div class="kpi"><div class="v">${peso(f.price)}</div><div class="l">Estimated system price (${peso(set.pricePerKW)}/kWp${R.bat&&num(set.batAdder)>0?' + battery':''})</div></div>
+      <div class="kpi"><div class="v">${peso(f.monthly1)}</div><div class="l">Avg. monthly savings, year 1</div></div>
+      <div class="kpi"><div class="v">${pb}</div><div class="l">Simple payback</div></div>
+      <div class="kpi"><div class="v">${peso(f.net)}</div><div class="l">Net savings over ${set.years} years</div></div>
+      <div class="kpi"><div class="v">${Math.round(f.roi)}%</div><div class="l">ROI over ${set.years} years</div></div>
+    </div>
+    <p class="small">${R.sys==='offgrid'?`Replaces ≈ ${peso(f.billBefore)}/month of grid-equivalent electricity (year 1).`:`Monthly bill now ≈ ${peso(f.billBefore)} → after solar ≈ ${peso(f.billAfter)} (year 1).`} Rate ₱${r2(R.rate)}/kWh${R.rateFromBill?' (from the client\'s bills)':''}, rising ${set.escal}%/yr; panels lose ${set.degr}%/yr.
+    ${f.exportAllowed?'Exported energy ('+r1(f.d1.exported)+' kWh/day) is credited at ₱'+r2(num(set.exportRate))+'/kWh.':(R.sys!=='offgrid' && f.d1.curtailed>0.1?'Zero-export: ~'+r1(f.d1.curtailed)+' kWh/day of surplus solar is not used.':'')}</p>
+    <div class="diagram" style="padding:8px">${chart}</div>
+
+    <h3 style="margin-top:18px">Assumptions &amp; notes</h3>
+    <ul class="small" style="margin:4px 0 0 18px;padding:0">
+      ${S.method==='schedule'?'<li>Load energy = watts × qty × hours on × energy % (inverter aircons/fridges use less energy than non-inverter units; editable per load).</li>':''}<li>Peak sun hours ${set.psh} h/day, performance ratio ${set.pr}. Daily consumption ${r1(L.daily)} kWh, of which ${Math.round(L.dayShare*100)}% is daytime.</li>
+      ${R.bat?`<li>Battery usable depth of discharge ${set.dod}%, round-trip efficiency ${set.eff}%. Sized for ${R.sys==='offgrid'?S.off.autonomy+' day(s) of autonomy':(S.hyb.basis==='night'?'night-time use of backed-up loads':S.hyb.outageH+' h outage at '+r1(R.backupKWused)+' kW')} (needs ${r1(R.batUsableReq)} kWh usable).</li>`:''}
+      ${R.sys!=='offgrid'?'<li>Grid-tie and hybrid systems need a distribution utility net-metering application (ERC rules, up to 100 kW) and an electrical permit. Install according to the Philippine Electrical Code and the manufacturers\' manuals.</li>':'<li>Off-grid systems need an electrical permit. Install according to the Philippine Electrical Code and the manufacturers\' manuals.</li>'}
+      <li>This is a preliminary estimate. Final quantities, layout and price are confirmed after a site survey (roof condition, shading, orientation, panel board).</li>
+    </ul>
+  </div>`;
+}
+function esc(s){ return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+function cashChart(f){
+  const W=760,H=200,pad=50, ys=f.flows.map(x=>x.cum); const minV=Math.min(-f.price, ...ys), maxV=Math.max(0,...ys);
+  const sx=i=>pad+ i*(W-pad-10)/f.flows.length, sy=v=>26+(maxV-v)*(H-56)/(maxV-minV||1);
+  const bw=(W-pad-10)/f.flows.length*0.7;
+  let bars=f.flows.map((x,i)=>{ const y0=sy(0), y1=sy(x.cum); return `<rect x="${sx(i)+2}" y="${Math.min(y0,y1)}" width="${bw}" height="${Math.abs(y1-y0)}" fill="${x.cum>=0?'#0a8f6a':'#c9d3de'}"><title>Year ${x.y}: ${peso(x.cum)}</title></rect>`+((x.y%5===0||x.y===1)?`<text x="${sx(i)+bw/2+2}" y="${H-12}" font-size="10" text-anchor="middle" fill="#5d6b7a">Yr ${x.y}</text>`:''); }).join('');
+  const fmt=v=>(v/1e6>=1||v/1e6<=-1)?(v/1e6).toFixed(1)+'M':(v/1e3).toFixed(0)+'k';
+  const grid=[minV,0,maxV].map(v=>`<line x1="${pad}" x2="${W-8}" y1="${sy(v)}" y2="${sy(v)}" stroke="#dde3ea"/><text x="${pad-6}" y="${sy(v)+4}" font-size="10" text-anchor="end" fill="#5d6b7a">₱${fmt(v)}</text>`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" role="img" aria-label="Cumulative cash flow"><text x="${pad}" y="10" font-size="11" fill="#1b2430" font-weight="600">Cumulative cash flow (gray = still paying back, green = net gain)</text>${grid}${bars}</svg>`;
+}
+
+function diagram(R){
+  const sd=R.sd, N=R.invN, inv=R.inv, hasBat=!!R.bat; const W=900, rowH=110; const H=Math.max(260, 60+N*rowH+ (hasBat?40:0));
+  const box=(x,y,w,h,t,s,fill)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="8" fill="${fill||'#fff'}" stroke="#7b8a99"/><text x="${x+w/2}" y="${y+h/2-(s?4:-4)}" font-size="12" font-weight="600" text-anchor="middle" fill="#1b2430">${t}</text>${s?`<text x="${x+w/2}" y="${y+h/2+12}" font-size="10.5" text-anchor="middle" fill="#5d6b7a">${s}</text>`:''}`;
+  const line=(x1,y1,x2,y2,c)=>`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${c||'#7b8a99'}" stroke-width="2"/>`;
+  let g='';
+  const invX=420, invW=150;
+  for(let k=0;k<N;k++){ const y=30+k*rowH;
+    // strings
+    const sCount=sd.strings; const sh=Math.min(26, (rowH-20)/sCount);
+    for(let s=0;s<sCount;s++){ const yy=y+6+s*(sh+4);
+      g+=`<rect x="20" y="${yy}" width="150" height="${sh}" rx="4" fill="#fff7dc" stroke="#d9a300"/><text x="95" y="${yy+sh/2+4}" font-size="10.5" text-anchor="middle">String ${s+1}: ${sd.series} × ${R.panel.wp} W</text>`;
+      g+=line(170,yy+sh/2,230,y+rowH/2-20,'#d9a300'); }
+    g+=box(230,y+rowH/2-45,140,50,'DC box','isolator + SPD'+(Math.max(...sd.perMppt)>1?' + fuses':''),'#f4f7fb');
+    g+=line(370,y+rowH/2-20,invX,y+rowH/2-20,'#d9a300');
+    g+=box(invX,y+rowH/2-45,invW,60,inv.model,(N>1?'Inverter '+(k+1)+' · ':'')+inv.kw+' kW','#e9f1fb');
+  }
+  const midY=30+(N*rowH)/2-20;
+  // AC side
+  const acX=640;
+  for(let k=0;k<N;k++){ const y=30+k*rowH+rowH/2-20; g+=line(invX+invW,y,acX,midY,'#0b5cad'); }
+  if(R.sys==='gridtie'){
+    g+=box(acX,midY-30,110,60,'Main panel','AC breaker + SPD','#eef8f3');
+    g+=line(acX+110,midY,800,midY,'#0b5cad'); g+=box(800,midY-25,80,50,'Grid','net meter');
+  } else {
+    g+=box(acX,midY-30,110,60,'Backup panel','AC brk + SPD','#eef8f3');
+    g+=line(acX+110,midY,780,midY,'#0b5cad'); g+=box(780,midY-25,100,50,'Loads',R.sys==='hybrid'?'backed-up':'all loads');
+    g+=box(780,H-70,100,46,R.sys==='hybrid'?'Grid':'Grid / genset',R.sys==='hybrid'?'AC input':'optional');
+    for(let k=0;k<N;k++){ const y=30+k*rowH+rowH/2+15; const xg=invX+invW+16+k*7; g+=`<path d="M780 ${H-47} H${xg} V${y} H${invX+invW}" fill="none" stroke="#9aa7b4" stroke-width="2" stroke-dasharray="5 4"/>`; }
+    g+=`<text x="640" y="${H-52}" font-size="10" fill="#5d6b7a">MTS bypass</text>`;
+  }
+  if(hasBat){ const by=H-70;
+    g+=box(230,by,170,46,`Battery bank ${R.bat.n} × ${R.bat.b.kwh} kWh`,'all in PARALLEL · 51.2 V','#eef8f3');
+    for(let k=0;k<N;k++){ const y=30+k*rowH+rowH/2+2; const xv=invX-14-k*9; g+=`<path d="M400 ${by+23} H${xv} V${y} H${invX}" fill="none" stroke="#0a8f6a" stroke-width="2.5"/>`; }
+    g+=`<text x="405" y="${by+16}" font-size="10" fill="#0a8f6a">DC breaker</text>`;
+  }
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="min-width:640px" role="img" aria-label="Single-line diagram">${g}
+    <g font-size="10" fill="#5d6b7a"><rect x="20" y="${H-18}" width="10" height="3" fill="#d9a300"/><text x="34" y="${H-14}">PV DC</text><rect x="80" y="${H-18}" width="10" height="3" fill="#0a8f6a"/><text x="94" y="${H-14}">Battery DC</text><rect x="160" y="${H-18}" width="10" height="3" fill="#0b5cad"/><text x="174" y="${H-14}">AC 230 V</text></g></svg>`;
+}
+
+/* ---------------- Quote email ---------------- */
+function quoteText(R){
+  const f=R.fin, L=R.load;
+  const lines=[
+    `Solar PV proposal — ${S.client.name||'Client'}`,
+    `System: ${CAT_LABEL[R.sys]} · ${r2(R.kWp)} kWp`,
+    ``,
+    `EQUIPMENT`,
+    `• ${R.panels} × ${R.panel.brand} ${R.panel.model} (${R.panel.wp} W)`,
+    `• ${R.invN} × ${R.inv.brand} ${R.inv.model} (${R.inv.kw} kW)`,
+  ];
+  if(R.bat) lines.push(`• ${R.bat.n} × ${R.bat.b.brand} ${R.bat.b.model} (${R.bat.b.kwh} kWh) — ${r2(R.bat.kwh)} kWh total`);
+  lines.push(`• Protection: DC isolators & SPDs, AC breakers & SPD${R.sys!=='gridtie'?', bypass changeover switch':''}, mounting & cabling`,
+    ``, `CONFIGURATION`,
+    `PV: ${R.invN>1?R.invN+' inverters × ':''}${R.sd.strings} string(s) × ${R.sd.series} panels in series`);
+  if(R.bat) lines.push(`Batteries: ${R.bat.n} in parallel (51.2 V)`);
+  lines.push(``, `ESTIMATE`,
+    `Consumption: ${Math.round(L.monthly)} kWh/month`,
+    `Solar production: ~${Math.round(f.ePVyr).toLocaleString()} kWh/year (${Math.round(f.offset*100)}% offset)`,
+    `System price: ${peso(f.price)}`,
+    `Savings: ~${peso(f.monthly1)}/month (year 1)`,
+    `Payback: ${f.payback!==null?r1(f.payback)+' years':'> '+S.set.years+' years'} · ${S.set.years}-yr ROI ${Math.round(f.roi)}%`,
+    ``, `Preliminary estimate, subject to site survey.`, `${S.set.preparedBy} — Exoid Robotics · www.exoidrobotics.com`);
+  return lines.join('\n');
+}
+function emailQuote(R){
+  const to=S.client.email, cc=S.set.ccEmail||'', subj=`Solar PV Proposal – ${S.client.name||'Exoid Robotics'} – ${r2(R.kWp)} kWp ${CAT_LABEL[R.sys]}`;
+  const body=quoteText(R);
+  if(S.set.webhook){
+    fetch(S.set.webhook,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+      body:JSON.stringify({to,cc,subject:subj,body,client:S.client,installer:SESSION_USER,kWp:R.kWp,system:R.sys,price:Math.round(R.fin.price),
+        panels:R.panels,inverter:R.invN+' x '+R.inv.model,battery:R.bat?R.bat.n+' x '+R.bat.b.model:'none',payback:R.fin.payback})})
+      .then(()=>flash('Quote sent to '+to+' (CC '+cc+').')).catch(()=>{ flash('Automatic send failed; opening your email app instead.'); openMail(to,cc,subj,body); });
+  } else openMail(to,cc,subj,body);
+}
+function openMail(to,cc,subj,body){
+  const url=`mailto:${encodeURIComponent(to)}?cc=${encodeURIComponent(cc)}&subject=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
+  const w=window.open(url,'_blank'); if(!w){ try{ window.top.location.href=url; }catch(e){ location.href=url; } }
+  flash('Email draft opened. Attach the PDF from "Print / Save as PDF" if you need one.');
+}
+
+/* ---------------- Boot ---------------- */
+(function(){ const code=store.sget('exoid_auth'); if(code) showApp(code); })();
+</script>
+</body>
+</html>
