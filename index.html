@@ -197,7 +197,7 @@ body.adv .hideadv{display:none}
     <svg width="26" height="26" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="7" fill="#f2a900"/><g stroke="#f2a900" stroke-width="2.4" stroke-linecap="round"><path d="M17 2v5M17 27v5M2 17h5M27 17h5M6.4 6.4l3.5 3.5M24.1 24.1l3.5 3.5M6.4 27.6l3.5-3.5M24.1 9.9l3.5-3.5"/></g></svg>
     <div class="title">Exoid <span>Solar</span></div>
     <div class="sp"></div>
-    <div class="who"><span id="whoLbl"></span><div style="font-size:10px;opacity:.6">Version 2026-11-18 17:45</div></div>
+    <div class="who"><span id="whoLbl"></span><div style="font-size:10px;opacity:.6">Version 2026-11-18 17:50</div></div>
     <button class="btn ghost sm" id="btnFull" title="Use the whole screen (Esc to exit)">⛶ Full screen</button>
     <button class="btn ghost sm" id="btnAdv" title="Show or hide technical details (wiring, protection, string voltages, installer notes)">⚙ Advanced<span class="cnt hidden" id="advCnt"></span></button>
     <button class="btn ghost sm" id="btnNew">+ New proposal</button>
@@ -825,7 +825,7 @@ function chooseBattery(nomKWh, demandA){
   // Among Ubetter options choose least oversize, fewer units when similar
   const ubs=opts.filter(o=>o.b.brand==='Ubetter' && o.n<=o.b.parallel);
   if(set.battery==='auto' && ubs.length){
-    const pv=b=>num(set.priceMode==='itemized'?b.price:b.cost);
+    const pv=b=>num(set.priceMode==='itemized'?b.price:b.cost) + (set.priceMode==='itemized'?0:num(set.bosPerBat,3000)+num(set.crewPerDay,6000)*0.3);   // each extra battery also costs a breaker, cables and install time
     if(ubs.every(o=>pv(o.b)>0)){ ubs.sort((x,y)=>(x.n*pv(x.b)-y.n*pv(y.b))||(x.n-y.n)); const best=ubs[0];   // cheapest bank; fewer units if within ~3%
       const near=ubs.filter(o=>o.n*pv(o.b)<=best.n*pv(best.b)*1.03).sort((x,y)=>x.n-y.n); return near[0]; }
     ubs.sort((x,y)=>x.kwh-y.kwh); const base=ubs[0]; const tol=Math.max(2.6, base.kwh*0.12); const near=ubs.filter(o=>o.kwh-base.kwh<=tol).sort((x,y)=>x.n-y.n||x.kwh-y.kwh); return near[0]; }
