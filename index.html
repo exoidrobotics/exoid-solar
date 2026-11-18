@@ -186,7 +186,7 @@ body.adv .hideadv{display:none}
     <svg width="26" height="26" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="7" fill="#f2a900"/><g stroke="#f2a900" stroke-width="2.4" stroke-linecap="round"><path d="M17 2v5M17 27v5M2 17h5M27 17h5M6.4 6.4l3.5 3.5M24.1 24.1l3.5 3.5M6.4 27.6l3.5-3.5M24.1 9.9l3.5-3.5"/></g></svg>
     <div class="title">Exoid <span>Solar</span></div>
     <div class="sp"></div>
-    <div class="who"><span id="whoLbl"></span><div style="font-size:10px;opacity:.6">Version 2026-11-18 17:00</div></div>
+    <div class="who"><span id="whoLbl"></span><div style="font-size:10px;opacity:.6">Version 2026-11-18 17:20</div></div>
     <button class="btn ghost sm" id="btnFull" title="Use the whole screen (Esc to exit)">⛶ Full screen</button>
     <button class="btn ghost sm" id="btnAdv" title="Show or hide technical details (wiring, protection, string voltages, installer notes)">⚙ Advanced<span class="cnt hidden" id="advCnt"></span></button>
     <button class="btn ghost sm" id="btnNew">+ New proposal</button>
@@ -1554,38 +1554,44 @@ async function makePdf(R){
     if(vb.length===4 && vb[2]>0){ const W=CW-20, H=Math.round(W*vb[3]/vb[2]); sv.setAttribute('width',W); sv.setAttribute('height',H); sv.style.width=W+'px'; sv.style.height=H+'px'; sv.style.minWidth='0'; } });
   const host=document.createElement('div'); host.style.cssText='position:absolute;left:-10000px;top:0;width:'+CW+'px;background:#fff';
   host.appendChild(el); document.body.appendChild(host);
-  let canvas, breaks=[], heads=[], total;
+  let breaks=[], heads=[], total;
   el.id='pdfRoot';
+  const { jsPDF } = window.jspdf;
+  const pdf=new jsPDF({unit:'mm', format:'a4', orientation:'portrait', compress:true});
+  const PW=210, PH=297, M=12, MB=16, usableW=PW-2*M, usableH=PH-M-MB;
+  const pxPerMm=CW/usableW, pageH=Math.floor(usableH*pxPerMm);
+  const HI=3;   // ≈300 dpi on A4; each page is rendered separately so phones/tablets stay under their canvas size limit
   try{
     const domH=Math.ceil(Math.max(el.scrollHeight, el.getBoundingClientRect().height));
-    // measure safe page-break points inside html2canvas's own cloned layout, so they match the image exactly
-    canvas=await html2canvas(el,{scale:2, backgroundColor:'#ffffff', useCORS:true, windowWidth:CW, scrollX:0, scrollY:0, width:CW, height:domH+400,
+    const base={backgroundColor:'#ffffff', useCORS:true, windowWidth:CW, windowHeight:domH+800, scrollX:0, scrollY:0, width:CW};
+    // pass 1 (low-res): measure safe page-break points inside html2canvas's own cloned layout, so they match the render exactly
+    await html2canvas(el,Object.assign({},base,{scale:0.2, height:domH+400,
       onclone:(doc)=>{ const r=doc.getElementById('pdfRoot'); if(!r) return; const t0=r.getBoundingClientRect().top;
         r.querySelectorAll('h3, .kpis, .kpi, tr, .diagram, li, .pricenote, p, .head, .grid').forEach(n=>breaks.push(Math.floor(n.getBoundingClientRect().top-t0)));
         r.querySelectorAll('h3').forEach(n=>heads.push(Math.floor(n.getBoundingClientRect().top-t0)));
-        total=Math.ceil(r.getBoundingClientRect().height)+16; }});
+        total=Math.ceil(r.getBoundingClientRect().height)+16; }}));
     if(!total) total=domH+120;
+    breaks=[...new Set(breaks)].filter(y=>y>0).sort((a,b)=>a-b);
+    const pages=[]; let start=0;
+    while(start<total-2){
+      let end=start+pageH;
+      if(end<total){ const cand=breaks.filter(y=>y>start+pageH*0.4 && y<=end); if(cand.length) end=cand[cand.length-1];
+        const h=heads.filter(y=>y<end && y>end-70 && y>start+pageH*0.4); if(h.length) end=h[0]; }   // keep a heading with what follows it
+      else end=total;
+      pages.push([start,end]); start=end;
+    }
+    // pass 2 (high-res): render each page region on its own
+    for(let i=0;i<pages.length;i++){
+      const [a,b]=pages[i], h=b-a; if(i) pdf.addPage();
+      const pc=el.cloneNode(true); pc.removeAttribute('id'); pc.style.marginTop=(-a)+'px';
+      const box=document.createElement('div'); box.className='pdfmode';
+      box.style.cssText='position:absolute;left:-10000px;top:0;width:'+CW+'px;height:'+h+'px;overflow:hidden;background:#fff';
+      box.appendChild(pc); document.body.appendChild(box);
+      let c; try{ c=await html2canvas(box,Object.assign({},base,{scale:HI, height:h, windowHeight:total+800})); } finally { box.remove(); }
+      pdf.addImage(c.toDataURL('image/jpeg',0.92),'JPEG',M,M,usableW,h/pxPerMm,undefined,'FAST');
+      c.width=c.height=0;   // free memory between pages
+    }
   } finally { host.remove(); }
-  breaks=[...new Set(breaks)].filter(y=>y>0).sort((a,b)=>a-b);
-  const { jsPDF } = window.jspdf;
-  const pdf=new jsPDF({unit:'mm', format:'a4', orientation:'portrait'});
-  const PW=210, PH=297, M=12, MB=16, usableW=PW-2*M, usableH=PH-M-MB;
-  const pxPerMm=CW/usableW, pageH=Math.floor(usableH*pxPerMm), k=canvas.width/CW;
-  const pages=[]; let start=0;
-  while(start<total-2){
-    let end=start+pageH;
-    if(end<total){ const cand=breaks.filter(y=>y>start+pageH*0.4 && y<=end); if(cand.length) end=cand[cand.length-1];
-      const h=heads.filter(y=>y<end && y>end-70 && y>start+pageH*0.4); if(h.length) end=h[0]; }   // keep a heading with what follows it
-    else end=total;
-    pages.push([start,end]); start=end;
-  }
-  pages.forEach(([a,b],i)=>{
-    if(i) pdf.addPage();
-    const slice=document.createElement('canvas'); slice.width=canvas.width; slice.height=Math.ceil((b-a)*k);
-    const ctx=slice.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,slice.width,slice.height);
-    ctx.drawImage(canvas,0,Math.floor(a*k),canvas.width,slice.height,0,0,slice.width,slice.height);
-    pdf.addImage(slice.toDataURL('image/jpeg',0.9),'JPEG',M,M,usableW,(b-a)/pxPerMm);
-  });
   const n=pdf.internal.getNumberOfPages();
   for(let i=1;i<=n;i++){ pdf.setPage(i); pdf.setFontSize(8.5); pdf.setTextColor(122,75,0);
     pdf.text(PDF_DISCLAIMER, M, PH-8); pdf.setTextColor(110,120,130);
