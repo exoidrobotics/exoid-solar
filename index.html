@@ -268,6 +268,10 @@ body.adv .hideadv{display:none}
       <h2>Quote email</h2>
       <div class="grid g2">
         <div><label>CC every quote to</label><input data-k="set.ccEmail"></div>
+        <div><label>Signature — name (blank = "Prepared by")</label><input data-k="set.sigName"></div>
+        <div><label>Signature — title</label><input data-k="set.sigTitle"></div>
+        <div><label>Signature — mobile / phone</label><input data-k="set.sigPhone" placeholder="e.g. 0917 123 4567"></div>
+        <div><label>Signature — reply-to email</label><input data-k="set.sigEmail"></div>
         <div><label>Google Apps Script URL — override (leave blank to use the built-in mailer)</label><input data-k="set.webhook" placeholder="built-in mailer (unlocked at login)"></div>
       </div>
       <p class="small"><span id="mailStatus"></span> If no mailer is set, <b>Email quote</b> opens your email app with the client in <i>To</i> and the CC address filled in. With the script, the tool sends the email itself and logs each quote to a Google Sheet.</p>
@@ -370,7 +374,7 @@ document.getElementById('btnLogout').onclick=()=>{ store.sdel('exoid_auth'); loc
 const DEFAULT_SET = {
   pricePerKW:50000, batAdder:0, rate:15.551, exportRate:7.0, escal:3, degr:0.4, years:25, export:'yes',
   psh:4.5, pr:0.80, dayShare:40, invMargin:15, dod:90, eff:95, offOversize:20, vdPV:2, tMin:10, tCellMax:70, vdAC:3, wPerHP:850,
-  panel:'JK620', battery:'auto', inverter:'auto', preparedBy:'', ccEmail:'mgb@exoidrobotics.com', webhook:'',
+  panel:'JK620', battery:'auto', inverter:'auto', preparedBy:'', ccEmail:'mgb@exoidrobotics.com', webhook:'', sigName:'', sigTitle:'Solar Energy Consultant', sigPhone:'', sigEmail:'mgb@exoidrobotics.com',
   custom:{wp:580, voc:51.5, vmp:42.5, isc:14.3, imp:13.65, tVoc:-0.27}
 };
 function monthsBack(){ const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; const d=new Date(); const out=[];
@@ -973,32 +977,48 @@ function diagram(R){
 }
 
 /* ---------------- Quote email ---------------- */
+function quoteSubject(R){
+  const f=R.fin, save=f.monthly1>=1000? `Save about ${peso(Math.floor(f.monthly1/100)*100)}/month` : `${r2(R.kWp)} kWp solar`;
+  const kind={hybrid:'with Battery Backup', offgrid:'Off-Grid', gridtie:'Grid-Tie'}[R.sys];
+  return `☀ Your Solar Energy System Quote – ${save} | ${r2(R.kWp)} kWp ${kind} | Exoid Robotics`;
+}
 function quoteText(R){
-  const f=R.fin, L=R.load;
-  const lines=[
-    `Solar PV proposal — ${S.client.name||'Client'}`,
-    `System: ${CAT_LABEL[R.sys]} · ${r2(R.kWp)} kWp`,
-    ``,
-    `EQUIPMENT`,
-    `• ${R.panels} × ${R.panel.brand} ${R.panel.model} (${R.panel.wp} W)`,
-    `• ${R.invN} × ${R.inv.brand} ${R.inv.model} (${R.inv.kw} kW)`,
-  ];
-  if(R.bat) lines.push(`• ${R.bat.n} × ${R.bat.b.brand} ${R.bat.b.model} (${R.bat.b.kwh} kWh) — ${r2(R.bat.kwh)} kWh total`);
-  lines.push(`• Protection: DC isolators & SPDs, AC breakers & SPD${R.sys!=='gridtie'?', bypass changeover switch':''}, mounting & cabling`,
-    ``, `CONFIGURATION`,
-    `PV: ${R.invN>1?R.invN+' inverters × ':''}${R.sd.strings} string(s) × ${R.sd.series} panels in series`);
-  if(R.bat) lines.push(`Batteries: ${R.bat.n} in parallel (51.2 V)`);
-  lines.push(``, `ESTIMATE`,
-    `Consumption: ${Math.round(L.monthly)} kWh/month`,
-    `Solar production: ~${Math.round(f.ePVyr).toLocaleString()} kWh/year (${Math.round(f.offset*100)}% offset)`,
-    `System price: ${peso(f.price)}`,
-    `Savings: ~${peso(f.monthly1)}/month (year 1)`,
-    `Payback: ${f.payback!==null?r1(f.payback)+' years':'> '+S.set.years+' years'} · ${S.set.years}-yr ROI ${Math.round(f.roi)}%`,
-    ``, `Preliminary estimate, subject to site survey.`, `${S.set.preparedBy} — Exoid Robotics · www.exoidrobotics.com`);
-  return lines.join('\n');
+  const f=R.fin, L=R.load, set=S.set, yrs=set.years;
+  const first=(S.client.name||'').trim().split(/\s+/)[0];
+  const greet = S.client.name ? `Dear ${S.client.name.trim()},` : `Dear Sir/Ma'am,`;
+  const kind={hybrid:'hybrid solar energy system with battery backup', offgrid:'off-grid solar energy system with battery storage', gridtie:'grid-tie solar energy system'}[R.sys];
+  const basis = S.method==='history' ? `your average consumption of about ${Math.round(L.monthly).toLocaleString()} kWh per month` : `your list of appliances (about ${Math.round(L.monthly).toLocaleString()} kWh per month)`;
+  const perk = {hybrid:'• Battery backup keeps your essential appliances running during brownouts',
+                offgrid:'• Full energy independence — your home runs on solar and battery power, with no electric bill',
+                gridtie:'• Excess solar energy is exported to the grid and credited to your bill through net-metering'}[R.sys];
+  const sig = [set.sigName || set.preparedBy || 'Exoid Robotics Team', set.sigTitle, 'Exoid Robotics',
+               set.sigPhone ? 'Mobile: '+set.sigPhone : '', set.sigEmail ? 'Email: '+set.sigEmail : '', 'www.exoidrobotics.com'].filter(Boolean);
+  const L1=[
+    greet, ``,
+    `Thank you for considering Exoid Robotics for your solar energy needs. Based on ${basis}, we've designed a ${r2(R.kWp)} kWp ${kind} for your property. Here is a summary of your quote.`,
+    ``, `YOUR SAVINGS AT A GLANCE`,
+    `• Estimated savings: ${peso(f.monthly1)} per month (about ${peso(f.yr1)} in the first year)`,
+    `• Payback period: about ${f.payback!==null? r1(f.payback)+' years' : 'more than '+yrs+' years'}`,
+    `• Estimated net savings over ${yrs} years: ${peso(f.net)}`,
+    `• Solar covers about ${Math.round(f.offset*100)}% of your electricity use`,
+    perk,
+    ``, `YOUR PROPOSED SYSTEM — ${peso(f.price)}`,
+    `• ${R.panels} × ${R.panel.brand} ${R.panel.model.replace(/\s*\(.*\)/,'')} solar panels (${R.panel.wp} W each)`,
+    `• ${R.invN} × ${R.inv.brand} ${R.inv.model} ${CAT_LABEL[R.sys].toLowerCase()} inverter${R.invN>1?'s':''} (${r1(R.invN*R.inv.kw)} kW${R.invN>1?' total':''})`];
+  if(R.bat) L1.push(`• ${R.bat.n} × ${R.bat.b.brand} ${R.bat.b.kwh} kWh LiFePO4 batter${R.bat.n>1?'ies':'y'} (${r1(R.bat.kwh)} kWh total storage)`);
+  L1.push(`• Complete protection devices, mounting structure and cabling`,
+    `• Estimated solar production: ${Math.round(f.ePVyr).toLocaleString()} kWh per year`,
+    ``, `NEXT STEPS`,
+    `1. Reply to this email or call us to schedule a site survey.`,
+    `2. We'll confirm the final design and price after checking your roof, shading and electrical panel.`,
+    `3. Once approved, we schedule the installation${R.sys!=='offgrid'?' and prepare the net-metering requirements with your utility':''}.`,
+    ``, `This is a preliminary estimate based on the information you provided. Final quantities and price will be confirmed after the site survey.`,
+    ``, `We'd be glad to answer any questions${first?', '+first:''}.`,
+    ``, `Warm regards,`, ``, ...sig);
+  return L1.join('\n');
 }
 function emailQuote(R){
-  const to=S.client.email, cc=S.set.ccEmail||'', subj=`Solar PV Proposal – ${S.client.name||'Exoid Robotics'} – ${r2(R.kWp)} kWp ${CAT_LABEL[R.sys]}`;
+  const to=S.client.email, cc=S.set.ccEmail||'', subj=quoteSubject(R);
   const body=quoteText(R);
   const hook = S.set.webhook || store.sget('exoid_mail') || '';
   if(hook){
