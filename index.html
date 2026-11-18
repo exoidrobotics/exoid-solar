@@ -261,7 +261,7 @@ body.adv .hideadv{display:none}
         <div><label>Solar panel</label><select data-k="set.panel" id="selPanel"></select></div>
         <div><label>Battery</label><select data-k="set.battery" id="selBattery"></select></div>
         <div><label>Inverter (auto = best fit)</label><select data-k="set.inverter" id="selInverter"></select></div>
-        <div><label>Installer / prepared by</label><input data-k="set.preparedBy"></div>
+        <div><label>Prepared by (set from your login)</label><input data-k="set.preparedBy"></div>
       </div>
       <div id="customPanel" class="grid g6" style="margin-top:12px"></div>
     </div>
@@ -328,22 +328,27 @@ const CAT_LABEL = {hybrid:'Hybrid', offgrid:'Off-grid', gridtie:'Grid-tie'};
 
 /* ---------------- Login (client-side gate) ---------------- */
 // Login check: PBKDF2-SHA256("CODE|PASSWORD", 150k iterations). Only the derived hash is stored here, never the password.
-const LOGIN_HASH = 'bdfad972549c3cba19ef0cc8076ec59999dbe2e6da244e78daad80194073a265';
+// Installers: code → display name + PBKDF2 hash of "CODE|PASSWORD". To add a user, ask Claude (needs the hash).
+const USERS = {
+  '100EXD': {name:'Engr. Michelangelo Barroga', hash:'bdfad972549c3cba19ef0cc8076ec59999dbe2e6da244e78daad80194073a265'},
+  '100RJT': {name:'Engr. Riego Jeremy Terte',   hash:'c758a1dadcba4407f3208728fe40202d1f789e024129a336371b59cf9b07f09b'},
+  '100MAB': {name:'Engr. Mark Aaron Barroga',   hash:'b791523d47192653929bb31af8cef1b905264ad85eff189b8267fdf1d2fa50a3'}
+};
 const PBKDF2_ITER = 150000;
-// Quote-mailer (Apps Script) URL, AES-256-GCM encrypted with a key derived from the installer code + password.
+// Quote-mailer (Apps Script) URL, AES-256-GCM encrypted with a key derived from the shared installer password.
 // It is decrypted only after a correct login, so the URL can't be read from this public file.
-const MAIL_CIPHER = 'odEJdVkzKcTRvr+6XTasezoQyt2A3sxJoSaA9Ovrso1HVl1/h/ctRwg3+kfyUAK2/tXUqGGibB8n0+6rI0q4Ul8bMCAtBK0dbGDwSEtSe48JnvKSdLzl03/LORacAVZkMV+lbvxclGWHzPU0MmXVYteymQYkvHXFZs84Mdd6r+3FLsAAjhUwBbxSAaI='; // base64(iv[12] + ciphertext + tag[16]); '' = not configured
+const MAIL_CIPHER = 'uxve3imIc1bK7lapUqUuNMxJ7c2xNIIU8SEU9F6LTFlbEeRBBdfXLNehpLYBEGJgSl/nAQaL36yODU7hIELch5ZWIDpJU8AxWQENMQpatgrYduMGKhwG6oLMdHYc37Slq40+zPUQb/7fBs0ZRnTOsOG5UkM/5tNycmEIfEFyGhmKxcjAzZtTyWE19aU='; // base64(iv[12] + ciphertext + tag[16]); '' = not configured
 const enc = new TextEncoder();
 async function pbkdf2Bits(secret, salt){
   const km = await crypto.subtle.importKey('raw', enc.encode(secret), 'PBKDF2', false, ['deriveBits']);
   return new Uint8Array(await crypto.subtle.deriveBits({name:'PBKDF2', salt:enc.encode(salt), iterations:PBKDF2_ITER, hash:'SHA-256'}, km, 256));
 }
 const toHex = u8 => Array.from(u8).map(b=>b.toString(16).padStart(2,'0')).join('');
-async function unlockMailer(secret){
+async function unlockMailer(pw){
   if(!MAIL_CIPHER) return '';
   try{
     const raw = Uint8Array.from(atob(MAIL_CIPHER), c=>c.charCodeAt(0));
-    const keyBytes = await pbkdf2Bits(secret, 'exoid-mail-v2');
+    const keyBytes = await pbkdf2Bits(pw, 'exoid-mail-v3');
     const key = await crypto.subtle.importKey('raw', keyBytes, 'AES-GCM', false, ['decrypt']);
     const pt = await crypto.subtle.decrypt({name:'AES-GCM', iv:raw.slice(0,12)}, key, raw.slice(12));
     const url = new TextDecoder().decode(pt);
@@ -353,8 +358,9 @@ async function unlockMailer(secret){
 const store = { get(k){try{return localStorage.getItem(k);}catch(e){return null;}}, set(k,v){try{localStorage.setItem(k,v);}catch(e){}},
   sget(k){try{return sessionStorage.getItem(k);}catch(e){return null;}}, sset(k,v){try{sessionStorage.setItem(k,v);}catch(e){}}, sdel(k){try{sessionStorage.removeItem(k);}catch(e){}} };
 let SESSION_USER = null;
-function showApp(code){ SESSION_USER=code; document.getElementById('login').classList.add('hidden'); document.getElementById('app').classList.remove('hidden');
-  document.getElementById('whoLbl').textContent='Installer '+code; if(!S.set.preparedBy) S.set.preparedBy='Installer '+code; init(); }
+let SESSION_NAME = '';
+function showApp(code){ SESSION_USER=code; SESSION_NAME=(USERS[code]&&USERS[code].name)||('Installer '+code); document.getElementById('login').classList.add('hidden'); document.getElementById('app').classList.remove('hidden');
+  document.getElementById('whoLbl').textContent=SESSION_NAME+' ('+code+')'; S.set.preparedBy=SESSION_NAME; save(); init(); }
 document.getElementById('loginForm').addEventListener('submit', async e=>{
   e.preventDefault();
   const err=document.getElementById('lgErr'), btn=e.target.querySelector('button');
@@ -362,9 +368,10 @@ document.getElementById('loginForm').addEventListener('submit', async e=>{
   const code=document.getElementById('lgCode').value.trim().toUpperCase(), pw=document.getElementById('lgPw').value, secret=code+'|'+pw;
   btn.disabled=true; btn.textContent='Checking…'; err.textContent='';
   try{
-    if(toHex(await pbkdf2Bits(secret,'exoid-login-v2'))===LOGIN_HASH){
+    const u=USERS[code];
+    if(u && toHex(await pbkdf2Bits(secret,'exoid-login-v2'))===u.hash){
       store.sset('exoid_auth',code);
-      const url=await unlockMailer(secret); if(url) store.sset('exoid_mail',url);
+      const url=await unlockMailer(pw); if(url) store.sset('exoid_mail',url);
       showApp(code);
     } else err.textContent='Incorrect installer code or password.';
   } finally { btn.disabled=false; btn.textContent='Log in'; }
@@ -1085,7 +1092,7 @@ async function emailQuote(R){
   try{ flash('Preparing PDF…'); pdf=await makePdf(R); }catch(e){ pdf=null; }
   try{
     if(hook){
-      const payload={to,cc,subject:subj,body,client:S.client,installer:SESSION_USER,kWp:R.kWp,system:R.sys,price:Math.round(R.fin.price),
+      const payload={to,cc,subject:subj,body,client:S.client,installer:SESSION_NAME+' ('+SESSION_USER+')',kWp:R.kWp,system:R.sys,price:Math.round(R.fin.price),
         panels:R.panels,inverter:R.invN+' x '+R.inv.model,battery:R.bat?R.bat.n+' x '+R.bat.b.model:'none',payback:R.fin.payback};
       if(pdf){ payload.pdfName=pdfName(R); payload.pdfBase64=pdf.output('datauristring').split(',')[1]; }
       flash('Sending…');
