@@ -122,7 +122,7 @@ body.adv .hideadv{display:none}
     <svg width="26" height="26" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="7" fill="#f2a900"/><g stroke="#f2a900" stroke-width="2.4" stroke-linecap="round"><path d="M17 2v5M17 27v5M2 17h5M27 17h5M6.4 6.4l3.5 3.5M24.1 24.1l3.5 3.5M6.4 27.6l3.5-3.5M24.1 9.9l3.5-3.5"/></g></svg>
     <div class="title">Exoid Solar Sizing &amp; Proposal</div>
     <div class="sp"></div>
-    <div class="who" id="whoLbl"></div>
+    <div class="who"><span id="whoLbl"></span><div style="font-size:10px;opacity:.6">Version 2026-11-18 16:05</div></div>
     <button class="btn ghost sm" style="color:#fff;border-color:#40566e" id="btnFull" title="Use the whole screen (Esc to exit)">⛶ Full screen</button>
     <button class="btn ghost sm" style="color:#fff;border-color:#40566e" id="btnAdv" title="Show or hide technical details (wiring, protection, string voltages, installer notes)">⚙ Advanced<span class="cnt hidden" id="advCnt"></span></button>
     <button class="btn ghost sm" style="color:#fff;border-color:#40566e" id="btnNew">+ New proposal</button>
@@ -376,7 +376,7 @@ let CAT_EDITS = {over:{}, added:[]};
 try{ const c=JSON.parse(localStorage.getItem('exoid_catalog_edits')||'null'); if(c&&c.over) CAT_EDITS=c; }catch(e){}
 function buildCatalog(){ const out={};
   for(const k of ['inverters','batteries','panels']){
-    out[k]=CATALOG_BASE[k].map(x=>Object.assign({},x,CAT_EDITS.over[x.id]||{},{builtin:true}))
+    out[k]=CATALOG_BASE[k].map(x=>{ const o=CAT_EDITS.over[x.id]||{}; const m=Object.assign({},x,o,{builtin:true}); if(!o.img && x.img && !o.imgRemoved) m.img=x.img; return m; })
       .concat((CAT_EDITS.added||[]).filter(a=>a.kind===k).map(a=>Object.assign({},a,CAT_EDITS.over[a.id]||{},{builtin:false}))); }
   return out; }
 let CATALOG = buildCatalog();
@@ -976,10 +976,11 @@ function openCatEditor(kind, item){
   const osel=m.querySelector('[data-f="alsoOffgrid"]'); if(osel) osel.value=x.alsoOffgrid?'1':'';
   const close=()=>m.remove();
   m.querySelector('#ceCancel').onclick=close; m.onclick=e=>{ if(e.target===m) close(); };
-  m.querySelector('#ceNoImg').onclick=()=>{ img=''; m.querySelector('#ceImg').innerHTML='no photo'; };
+  let imgRemoved=false;
+  m.querySelector('#ceNoImg').onclick=()=>{ img=''; imgRemoved=true; m.querySelector('#ceImg').innerHTML='no photo'; };
   m.querySelector('#ceFile').onchange=e=>{ const f=e.target.files[0]; if(!f) return; const rd=new FileReader();
     rd.onload=()=>{ const im=new Image(); im.onload=()=>{ const max=480, k=Math.min(1,max/Math.max(im.width,im.height)); const c=document.createElement('canvas'); c.width=Math.round(im.width*k); c.height=Math.round(im.height*k);
-      const ctx=c.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,c.width,c.height); ctx.drawImage(im,0,0,c.width,c.height); img=c.toDataURL('image/jpeg',0.82); m.querySelector('#ceImg').innerHTML=`<img src="${img}">`; }; im.src=rd.result; };
+      const ctx=c.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,c.width,c.height); ctx.drawImage(im,0,0,c.width,c.height); img=c.toDataURL('image/jpeg',0.82); imgRemoved=false; m.querySelector('#ceImg').innerHTML=`<img src="${img}">`; }; im.src=rd.result; };
     rd.readAsDataURL(f); };
   m.querySelector('#ceSave').onclick=()=>{
     const out={};
@@ -994,7 +995,7 @@ function openCatEditor(kind, item){
     if(kind==='panels' && !out.area) out.area=r2(out.wp/1000/0.215);
     if(kind==='inverters'){ if(!out.startV) out.startV=out.mpptMin; if(!out.surge) out.surge=1; if(!out.parallel) out.parallel=1; }
     if(kind==='batteries' && !out.parallel) out.parallel=1;
-    out.img=img;
+    out.img=img; out.imgRemoved=imgRemoved && !img;
     catChange(e=>{
       if(isNew){ out.id='U'+Date.now().toString(36); out.kind=kind; e.added.push(out); }
       else if(item.builtin){ e.over[item.id]=Object.assign({}, e.over[item.id]||{}, out); }
