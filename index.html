@@ -202,7 +202,7 @@ body.adv .hideadv{display:none}
     <svg width="26" height="26" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="7" fill="#f2a900"/><g stroke="#f2a900" stroke-width="2.4" stroke-linecap="round"><path d="M17 2v5M17 27v5M2 17h5M27 17h5M6.4 6.4l3.5 3.5M24.1 24.1l3.5 3.5M6.4 27.6l3.5-3.5M24.1 9.9l3.5-3.5"/></g></svg>
     <div class="title">Exoid <span>Solar</span></div>
     <div class="sp"></div>
-    <div class="who"><span id="whoLbl"></span><div style="font-size:10px;opacity:.6">Version 2026-11-18 19:55</div></div>
+    <div class="who"><span id="whoLbl"></span><div style="font-size:10px;opacity:.6">Version 2026-11-18 20:05</div></div>
     <button class="btn ghost sm" id="btnFull" title="Use the whole screen (Esc to exit)">⛶ Full screen</button>
     <button class="btn ghost sm" id="btnAdv" title="Show or hide technical details (wiring, protection, string voltages, installer notes)">⚙ Advanced<span class="cnt hidden" id="advCnt"></span></button>
     <button class="btn ghost sm" id="btnNew">+ New proposal</button>
@@ -509,24 +509,26 @@ const USERS = {
   '100EXD': {name:'Engr. Michelangelo Barroga', hash:'bdfad972549c3cba19ef0cc8076ec59999dbe2e6da244e78daad80194073a265'},
   '100RJT': {name:'Engr. Riego Jeremy Terte',   hash:'c758a1dadcba4407f3208728fe40202d1f789e024129a336371b59cf9b07f09b'},
   '100MAB': {name:'Engr. Mark Aaron Barroga',   hash:'b791523d47192653929bb31af8cef1b905264ad85eff189b8267fdf1d2fa50a3'},
-  // test account (own simple password): never unlocks the shared mailer; emails open as a draft to the client email only (no CC / team copies);
-  // proposals stay on this device
+  // TEMPORARY test account for beta testing: sends via the mailer to the client email only (no CC / team copies);
+  // no access to shared proposals or catalog (saved on the device only). Delete this entry and MAIL_CIPHER_TEST when testing ends.
   '100TST': {name:'Test Account',               hash:'130989536526861864a573d24945fa4da6d57938d18c5b19b0c29e5c68326497', test:true}
 };
 const PBKDF2_ITER = 150000;
 // Quote-mailer (Apps Script) URL, AES-256-GCM encrypted with a key derived from the shared installer password.
 // It is decrypted only after a correct login, so the URL can't be read from this public file.
 const MAIL_CIPHER = 'uxve3imIc1bK7lapUqUuNMxJ7c2xNIIU8SEU9F6LTFlbEeRBBdfXLNehpLYBEGJgSl/nAQaL36yODU7hIELch5ZWIDpJU8AxWQENMQpatgrYduMGKhwG6oLMdHYc37Slq40+zPUQb/7fBs0ZRnTOsOG5UkM/5tNycmEIfEFyGhmKxcjAzZtTyWE19aU='; // base64(iv[12] + ciphertext + tag[16]); '' = not configured
+// TEMPORARY (beta test): same mailer URL locked with the test account's password; remove together with 100TST
+const MAIL_CIPHER_TEST = 'sQxS5N6Wq/0cLvN+PuvRrC2qGGwpFb33Mwe7mXDormn2yub+um63qu0FkYBO2BMzLUKfeDsXw3lZ80ivhEeBUlPYw1i8IYbeiDojd6YkQy8B8WUSE4ZSWV8GqgndocqwKoqa8sFbKsYOOLi/qyHFI8RZaSflZD6GoKSGdladHlcjBNVNDQWt4miT2zc=';
 const enc = new TextEncoder();
 async function pbkdf2Bits(secret, salt){
   const km = await crypto.subtle.importKey('raw', enc.encode(secret), 'PBKDF2', false, ['deriveBits']);
   return new Uint8Array(await crypto.subtle.deriveBits({name:'PBKDF2', salt:enc.encode(salt), iterations:PBKDF2_ITER, hash:'SHA-256'}, km, 256));
 }
 const toHex = u8 => Array.from(u8).map(b=>b.toString(16).padStart(2,'0')).join('');
-async function unlockMailer(pw){
-  if(!MAIL_CIPHER) return '';
+async function unlockMailer(pw, cipher){
+  cipher = cipher || MAIL_CIPHER; if(!cipher) return '';
   try{
-    const raw = Uint8Array.from(atob(MAIL_CIPHER), c=>c.charCodeAt(0));
+    const raw = Uint8Array.from(atob(cipher), c=>c.charCodeAt(0));
     const keyBytes = await pbkdf2Bits(pw, 'exoid-mail-v3');
     const key = await crypto.subtle.importKey('raw', keyBytes, 'AES-GCM', false, ['decrypt']);
     const pt = await crypto.subtle.decrypt({name:'AES-GCM', iv:raw.slice(0,12)}, key, raw.slice(12));
@@ -551,7 +553,9 @@ document.getElementById('loginForm').addEventListener('submit', async e=>{
     const u=USERS[code];
     if(u && toHex(await pbkdf2Bits(secret,'exoid-login-v2'))===u.hash){
       store.sset('exoid_auth',code);
-      store.sdel('exoid_mail'); if(!(USERS[code]&&USERS[code].test)){ const url=await unlockMailer(pw); if(url) store.sset('exoid_mail',url); }
+      store.sdel('exoid_mail'); store.sdel('exoid_mail_test');
+      if(USERS[code]&&USERS[code].test){ const url=await unlockMailer(pw, MAIL_CIPHER_TEST); if(url) store.sset('exoid_mail_test',url); }   // email only; no shared proposals/catalog
+      else { const url=await unlockMailer(pw); if(url) store.sset('exoid_mail',url); }
       showApp(code);
     } else err.textContent='Incorrect installer code or password.';
   } finally { btn.disabled=false; btn.textContent='Log in'; }
@@ -1763,7 +1767,7 @@ async function emailQuote(R){
   let to=S.client.email, cc=S.set.ccEmail||'', bcc=(S.set.bccEmail||'').split(/[,;\s]+/).filter(x=>x.includes('@')).join(','), subj=quoteSubject(R);
   if(SESSION_TEST){ cc=''; bcc=''; }   // test account: client email only, no CC or team copies
   const body=quoteText(R);
-  const hook = SESSION_TEST ? '' : (S.set.webhook || store.sget('exoid_mail') || '');
+  const hook = SESSION_TEST ? (store.sget('exoid_mail_test')||'') : (S.set.webhook || store.sget('exoid_mail') || '');
   const btn=document.getElementById('btnEmail'); btn.disabled=true;
   let pdf=null;
   try{ flash('Preparing PDF…'); pdf=await makePdf(R); }catch(e){ pdf=null; }
