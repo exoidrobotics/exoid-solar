@@ -1,6 +1,6 @@
 /**
  * Exoid Robotics – Solar quote mailer (Google Apps Script)
- * Sends each quote from the calculator to the client (with the PDF proposal attached), CCs the office,
+ * Sends each quote from the calculator to the client (with the PDF proposal attached), BCCs the team,
  * logs it to the "Quotes" tab of the Google Sheet this script is attached to, and stores the
  * shared equipment catalog (installer edits + product photos) as a file in your Google Drive.
  *
@@ -14,7 +14,8 @@
  * 4. Copy the Web app URL (ends in /exec). In the calculator, go to Assumptions → Quote email
  *    and paste it into "Google Apps Script URL".
  */
-const CC_ALWAYS = 'mgb@exoidrobotics.com';
+const BCC_ALWAYS = 'mgb@exoidrobotics.com';   // hidden copy of every quote
+const REPLY_TO = 'mgb@exoidrobotics.com';     // client replies go here
 const SHEET_NAME = 'Quotes';
 
 const CATALOG_FILE = 'Exoid Solar Catalog (do not delete).json';
@@ -52,11 +53,13 @@ function doPost(e) {
   if (!d.to || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.to)) {
     return ContentService.createTextOutput('missing client email');
   }
-  const cc = [d.cc, CC_ALWAYS].filter(String).filter((v, i, a) => a.indexOf(v) === i).join(',');
+  const cc = String(d.cc || '');
+  const bcc = [String(d.bcc || ''), BCC_ALWAYS].join(',').split(',').map(s => s.trim()).filter(String)
+                .filter((v, i, a) => a.indexOf(v) === i).join(',');
   const html = '<div style="font-family:Arial,sans-serif;font-size:14px;white-space:pre-wrap">' +
                String(d.body).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])) + '</div>';
-  const mail = { to: d.to, cc: cc, subject: d.subject, body: d.body, htmlBody: html, name: 'Exoid Robotics' };
-  if (d.bcc) mail.bcc = String(d.bcc);   // hidden team copies
+  const mail = { to: d.to, subject: d.subject, body: d.body, htmlBody: html, name: 'Exoid Robotics', replyTo: REPLY_TO, bcc: bcc };
+  if (cc) mail.cc = cc;
   if (d.pdfBase64) {
     mail.attachments = [Utilities.newBlob(Utilities.base64Decode(d.pdfBase64), 'application/pdf', d.pdfName || 'Exoid Solar Proposal.pdf')];
   }

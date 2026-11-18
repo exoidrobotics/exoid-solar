@@ -282,7 +282,7 @@ body.adv .hideadv{display:none}
     <div class="card">
       <h2>Quote email</h2>
       <div class="grid g2">
-        <div><label>CC every quote to (visible to the client)</label><input data-k="set.ccEmail"></div>
+        <div><label>CC every quote to (visible to the client, usually blank)</label><input data-k="set.ccEmail"></div>
         <div><label>BCC every quote to (hidden copies for the team, comma-separated)</label><input data-k="set.bccEmail"></div>
         <div><label>Signature — name (blank = "Prepared by")</label><input data-k="set.sigName"></div>
         <div><label>Signature — title</label><input data-k="set.sigTitle"></div>
@@ -421,7 +421,7 @@ document.getElementById('btnLogout').onclick=()=>{ store.sdel('exoid_auth'); loc
 const DEFAULT_SET = {
   pricePerKW:50000, batAdder:0, rate:15.551, utility:'meralco', nmFee:50000, exportRate:7.0, escal:3, degr:0.4, years:25,
   psh:4.5, pr:0.80, dayShare:40, invMargin:15, dod:90, eff:95, offOversize:20, vdPV:2, tMin:10, tCellMax:70, vdAC:3, wPerHP:850,
-  panel:'JK620', battery:'auto', inverter:'auto', preparedBy:'', ccEmail:'mgb@exoidrobotics.com', bccEmail:'rjt@exoidrobotics.com, macoyyy.barroga@gmail.com', webhook:'', sigName:'', sigTitle:'Solar Energy Consultant', sigPhone:'', sigEmail:'mgb@exoidrobotics.com',
+  panel:'JK620', battery:'auto', inverter:'auto', preparedBy:'', ccEmail:'', bccEmail:'mgb@exoidrobotics.com, rjt@exoidrobotics.com, macoyyy.barroga@gmail.com', webhook:'', sigName:'', sigTitle:'Solar Energy Consultant', sigPhone:'', sigEmail:'mgb@exoidrobotics.com',
   custom:{wp:580, voc:51.5, vmp:42.5, isc:14.3, imp:13.65, tVoc:-0.27}
 };
 function monthsBack(){ const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; const d=new Date(); const out=[];
@@ -437,6 +437,8 @@ function defaultState(){ return {
 };}
 let S = defaultState();
 try{ const saved=JSON.parse(store.get('exoid_solar_state')||'null'); if(saved){ S=Object.assign(defaultState(),saved); S.set=Object.assign(JSON.parse(JSON.stringify(DEFAULT_SET)),saved.set||{}); } }catch(e){}
+// v2 email routing: mgb@ moves from visible CC to hidden BCC on devices that saved the old default
+if(S.set.ccEmail==='mgb@exoidrobotics.com'){ S.set.ccEmail=''; const b=(S.set.bccEmail||''); if(!/mgb@exoidrobotics\.com/i.test(b)) S.set.bccEmail='mgb@exoidrobotics.com'+(b?', '+b:''); }
 function save(){ store.set('exoid_solar_state', JSON.stringify(S)); }
 function getK(path){ return path.split('.').reduce((o,k)=>o==null?o:o[k], S); }
 function setK(path,val){ const ks=path.split('.'); let o=S; for(let i=0;i<ks.length-1;i++) o=o[ks[i]]; o[ks[ks.length-1]]=val; }
