@@ -96,7 +96,7 @@ tr.grand td{font-weight:800;font-size:15.5px;border-top:2px solid var(--cell);bo
 .kpi{border:1px solid var(--line);border-radius:6px;padding:12px 14px;background:#fff}
 .kpi .v{font-size:21px;font-weight:700;letter-spacing:-.01em}
 .kpi .l{font-size:12.5px;color:var(--muted)}
-.kpis.module{gap:0;border-radius:6px;overflow:hidden;background:var(--cell);border:3px solid #C9D3DD;box-shadow:inset 0 0 0 1px var(--cell)}
+.kpis.module{gap:0;grid-auto-rows:1fr;border-radius:6px;overflow:hidden;background:var(--cell);border:3px solid #C9D3DD;box-shadow:inset 0 0 0 1px var(--cell)}
 .kpis.module .kpi{background:transparent;border:0;border-right:1px solid var(--cellline);border-bottom:1px solid var(--cellline);border-radius:0;padding:16px 16px 14px;color:#fff;position:relative}
 .kpis.module .kpi::after{content:"";position:absolute;inset:6px;border:1px dashed rgba(255,255,255,.06);pointer-events:none}
 .kpis.module .kpi .v{font-size:24px;color:#fff}
@@ -118,6 +118,17 @@ tr.grand td{font-weight:800;font-size:15.5px;border-top:2px solid var(--cell);bo
 .imgslot{width:58px;height:58px;border:1px dashed var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);text-align:center;overflow:hidden;background:#fff}
 .imgslot img{max-width:100%;max-height:100%}
 .pricenote{margin:12px 0 4px;padding:9px 12px;border:1px solid #F5C189;background:#FFF6EC;border-radius:6px;font-weight:700;color:#8A4B06}
+/* day/night energy balance + editable qty */
+.ebal{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.ebal > div{border:1px solid var(--line);border-radius:6px;padding:12px 14px;background:#fff}
+.ebal .eh{font-weight:700;margin-bottom:8px}
+.ebal ul{margin:8px 0 0 18px;padding:0}
+.ebar{display:flex;height:14px;border-radius:7px;overflow:hidden;background:#EEF2F6}
+.ebar span{display:block;height:100%}
+.e-sun{background:#F2B13A}.e-bat{background:#2F8F5B}.e-exp{background:#9FB3C8}.e-grid{background:#5B6B7C}
+.qtyin{width:70px;text-align:right;font-size:18px;font-weight:700;padding:4px 6px;border:1px solid var(--line);border-radius:6px}
+@media(max-width:820px){.ebal{grid-template-columns:1fr}}
+@media print{.qtyin{border:0;padding:0}}
 /* catalog */
 #catModal{position:fixed;inset:0;background:rgba(22,33,46,.5);display:flex;align-items:flex-start;justify-content:center;padding:30px 12px;z-index:50;overflow:auto}
 #catModal .box{background:#fff;border-radius:10px;max-width:760px;width:100%;padding:20px;border:1px solid var(--line)}
@@ -186,7 +197,7 @@ body.adv .hideadv{display:none}
     <svg width="26" height="26" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="7" fill="#f2a900"/><g stroke="#f2a900" stroke-width="2.4" stroke-linecap="round"><path d="M17 2v5M17 27v5M2 17h5M27 17h5M6.4 6.4l3.5 3.5M24.1 24.1l3.5 3.5M6.4 27.6l3.5-3.5M24.1 9.9l3.5-3.5"/></g></svg>
     <div class="title">Exoid <span>Solar</span></div>
     <div class="sp"></div>
-    <div class="who"><span id="whoLbl"></span><div style="font-size:10px;opacity:.6">Version 2026-11-18 17:20</div></div>
+    <div class="who"><span id="whoLbl"></span><div style="font-size:10px;opacity:.6">Version 2026-11-18 17:45</div></div>
     <button class="btn ghost sm" id="btnFull" title="Use the whole screen (Esc to exit)">⛶ Full screen</button>
     <button class="btn ghost sm" id="btnAdv" title="Show or hide technical details (wiring, protection, string voltages, installer notes)">⚙ Advanced<span class="cnt hidden" id="advCnt"></span></button>
     <button class="btn ghost sm" id="btnNew">+ New proposal</button>
@@ -254,6 +265,7 @@ body.adv .hideadv{display:none}
           <div><label>Largest simultaneous load (kW) — optional</label><input type="number" step="0.1" min="0" data-k="hist.peakKW" placeholder="auto-estimate"></div>
           <div><label>Largest motor / aircon (HP) — optional</label><input type="number" step="0.5" min="0" data-k="hist.motorHP" placeholder="e.g. 2"></div>
           <div><label>Largest motor is inverter-type?</label><select data-k="hist.motorInv"><option value="yes">Yes (inverter)</option><option value="no">No (non-inverter)</option></select></div>
+          <div><label>Daytime share of usage (%, 6 am–6 pm)</label><input type="number" min="5" max="95" data-k="set.dayShare" title="Homes with aircon running at night are often 30–40% daytime"></div>
           <div><label>Use rate from bill (₱ ÷ kWh)?</label><select data-k="hist.useBillRate"><option value="yes">Yes, if bill amounts entered</option><option value="no">No, use Assumptions rate</option></select></div>
         </div>
       </div>
@@ -544,7 +556,7 @@ function monthsBack(){ const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug',
 function defaultState(){ return {
   client:{name:'',email:'',phone:'',address:'',site:''}, pid:null, savedAt:null, author:'',
   sys:'hybrid', method:'history', netMeter:'yes', laborDays:'', mode:'auto', custom:{sys:'', inv:'SPM6000', invN:1, panel:'JK620', panels:12, bat:'UB200', batN:2},
-  hyb:{basis:'night', outageH:4, backupKW:''}, off:{autonomy:1}, gt:{offset:100}, hybOffset:100,
+  hyb:{basis:'night', outageH:4, backupKW:'', coverPct:100}, off:{autonomy:1}, gt:{offset:100}, hybOffset:100,
   hist:{months:monthsBack().map(l=>({label:l,kwh:'',bill:''})), peakKW:'', motorHP:'', motorInv:'yes', useBillRate:'yes'},
   sched:{voltage:230, demand:0.75, loads:[]},
   site:{roof:'', pvRun:20, acRun:15, batRun:2},
@@ -630,7 +642,7 @@ function analyzeLoad(){
     out.peakEstimated = !(num(S.hist.peakKW)>0);
     const hp=num(S.hist.motorHP); const mw=hp*num(set.wPerHP,850);
     out.motorW = mw; out.surgeKW = out.peakKW + (mw ? mw*((S.hist.motorInv==='yes'?TYPE_SURGE.invmotor:TYPE_SURGE.motor)-1)/1000 : out.peakKW*0.3);
-    out.backupPeakKW = out.peakKW; out.backupDaily = out.daily;
+    out.backupPeakKW = out.peakKW; out.backupDaily = out.daily; out.nightPeakKW = out.peakKW; out.backupNightPeakKW = out.peakKW;
     out.nightKWh = out.daily*(1-out.dayShare); out.backupNight=out.nightKWh;
   } else {
     const L=S.sched.loads; if(!L.length){ out.error='Add at least one load to the schedule.'; return out; }
@@ -646,13 +658,19 @@ function analyzeLoad(){
     out.connectedW=total; out.daily=e; out.monthly=e*30.42; out.dayShare = e? eDay/e : 0.4;
     out.peakKW = Math.max(wDay,wNight)*df/1000; out.surgeKW = out.peakKW + maxSurgeExtra/1000;
     out.backupPeakKW = Math.max(bwDay,bwNight)*df/1000; out.backupSurgeKW = out.backupPeakKW + maxSurgeExtraB/1000;
-    out.backupDaily=bE; out.nightKWh=e-eDay; out.backupNight=bNight;
+    out.backupDaily=bE; out.nightKWh=e-eDay; out.backupNight=bNight; out.nightPeakKW=wNight*df/1000; out.backupNightPeakKW=bwNight*df/1000;
     if(num(S.sched.voltage,230)<200||num(S.sched.voltage,230)>240) out.warnings.push('Supply voltage outside 200–240 V; all equipment here is 230 V single-phase.');
   }
   return out;
 }
 
-function chooseInverter(type, needKW, pvW, surgeKW){
+function stringCapW(inv, panel){   // most PV one inverter can actually take with this panel (string limits, not just max PV)
+  if(!panel) return inv.maxPV; const tMin=num(S.set.tMin,10);
+  const vocCold=panel.voc*(1+panel.tVoc/100*(tMin-25)), nMax=Math.floor(inv.vdcMax/vocCold);
+  const slots=inv.mppt.map(iMax=>Math.min(2,Math.max(1,Math.floor(iMax/panel.imp+1e-9)))).reduce((a,b)=>a+b,0);
+  return Math.min(inv.maxPV, Math.max(0,slots*nMax*panel.wp));
+}
+function chooseInverter(type, needKW, pvW, surgeKW, panel){
   const set=S.set; let cands=invFamily(type);
   if(set.inverter!=='auto'){ const f=cands.filter(i=>i.id===set.inverter); if(f.length) cands=f; }
   cands=cands.slice().sort((a,b)=>a.kw-b.kw);
@@ -660,7 +678,7 @@ function chooseInverter(type, needKW, pvW, surgeKW){
   for(let n=1;n<=maxPar;n++){
     for(const c of cands){ if(n>c.parallel) continue;
       const okKW = n*c.kw >= needKW - 1e-9;
-      const okPV = n*c.maxPV >= pvW - 1e-9;
+      const okPV = n*stringCapW(c,panel) >= pvW - 1e-9;
       const okSurge = type==='gridtie' || n*c.kw*c.surge >= surgeKW - 1e-9 || c.surge<=1.0; // SPM surge checked separately
       if(okKW && okPV && okSurge) return {inv:c, n};
     }
@@ -763,20 +781,37 @@ function calculateCustom(){
   else {
     let usable;
     if(sys==='offgrid') usable=L.daily*num(S.off.autonomy,1);
-    else if(S.hyb.basis==='night') usable=L.backupNight;
+    else if(S.hyb.basis==='night'){ const want=L.backupNight*num(S.hyb.coverPct,100)/100, chargeable=Math.max(0,R.kWp*num(set.psh,4.5)*num(set.pr,0.8)-L.daily*L.dayShare)*eff; usable=Math.min(want,chargeable); R.batWant=want; R.batChargeable=chargeable;
+      if(nb*b.kwh*dod > chargeable*1.15) R.notes.push('The solar surplus can refill about '+r1(chargeable)+' kWh per day, so part of this battery bank will rarely be used unless it is charged from the grid.'); }
     else { const bkw=num(S.hyb.backupKW)>0?num(S.hyb.backupKW):L.backupPeakKW*0.5; usable=bkw*num(S.hyb.outageH,4); R.backupKWused=bkw; }
     usable=Math.max(usable,2);
-    const demandA=invN*inv.kw*1000/(48*0.95);
+    const demandA=batteryDemandA({invN, inv}, L, sys);
     R.bat={b, n:nb, kwh:nb*b.kwh, byE:0, byI:0}; R.batUsable=R.bat.kwh*dod; R.batUsableReq=usable; R.batDemandA=demandA;
     if(R.batUsable<usable*0.95) R.warnings.push('Battery bank gives '+r1(R.batUsable)+' kWh usable; the design target is '+r1(usable)+' kWh. Backup time will be shorter.');
-    if(nb*b.maxI<demandA) R.warnings.push(nb+' × '+b.maxI+' A batteries can\'t supply the inverter\'s full '+Math.round(demandA)+' A. Add batteries or limit the discharge current in the inverter settings.');
+    if(nb*b.maxI<demandA) R.warnings.push(nb+' × '+b.maxI+' A batteries can\'t supply the peak load\'s '+Math.round(demandA)+' A. Add batteries.');
+    else if(invN*inv.kw*1000/(48*0.95) > nb*b.maxI) R.notes.push('Set the inverter\'s maximum battery discharge current to '+Math.floor(nb*b.maxI/10)*10+' A so it never draws more than the batteries can supply.');
     if(nb>b.parallel) R.warnings.push(nb+' batteries is more than the '+b.parallel+'-unit parallel limit.');
   }
+  energyBalance(R, L);
   R.bos=bos(R, panel, sd, {inv, n:invN});
   R.fin=finance(R, L, panel);
   if(R.fin.breakdown.marketPos!=='within') R.warnings.push('Price is '+R.fin.breakdown.marketPos+' the typical market range ('+peso(R.fin.breakdown.perKWp)+'/kWp).');
   if(R.fin.breakdown.missing.length) R.warnings.push('No price set for '+R.fin.breakdown.missing.join(', ')+'. Set it in the Equipment catalog.');
   return R;
+}
+
+function batteryDemandA(R, L, sys){
+  // peak current the battery must deliver: the real load peak (not the inverter's rating), capped by the inverter
+  const loadKW = sys==='offgrid' ? L.peakKW : (L.backupPeakKW||L.peakKW);
+  return Math.min(R.invN*R.inv.kw, loadKW*1.25)*1000/(48*0.95);
+}
+function energyBalance(R, L){
+  const set=S.set, eff=num(set.eff,95)/100;
+  const pvDaily=R.kWp*num(set.psh,4.5)*num(set.pr,0.8), dayLoad=L.daily*L.dayShare, nightLoad=L.daily-dayLoad;
+  const surplus=Math.max(0,pvDaily-dayLoad);
+  R.energy={pvDaily, dayLoad, nightLoad, surplus, chargeable:surplus*eff};
+  if(R.bat){ const avgKW=L.daily/24, nightKW=nightLoad/12||avgKW, bkKW=(L.backupDaily||L.daily)/24;
+    R.batHours={house:R.batUsable/avgKW, night:R.batUsable/nightKW, backup:R.batUsable/bkKW}; }
 }
 
 function chooseBattery(nomKWh, demandA){
@@ -823,7 +858,7 @@ function calculate(){
   else if(sys==='hybrid'){ needKW = L.backupPeakKW*margin; surgeKW=(L.backupSurgeKW||L.surgeKW); }
   else { needKW = L.peakKW*margin; surgeKW=L.surgeKW; }
   R.needKW=needKW; R.surgeKW=surgeKW;
-  let pick=chooseInverter(sys, needKW, panelsNeeded*panel.wp, surgeKW);
+  let pick=chooseInverter(sys, needKW, panelsNeeded*panel.wp, surgeKW, panel);
   // string design; if panels per inverter can't fit, add an inverter
   let sd, guard=0;
   const family = invFamily(sys).filter(i=>set.inverter==='auto'||i.id===set.inverter).sort((a,b)=>a.kw-b.kw);
@@ -852,19 +887,27 @@ function calculate(){
   if(sys!=='gridtie'){
     let usable;
     if(sys==='offgrid'){ usable = L.daily*num(S.off.autonomy,1); }
-    else if(S.hyb.basis==='night'){ usable = L.backupNight; }
+    else if(S.hyb.basis==='night'){
+      // a hybrid battery only refills from the day's solar surplus, so size it to the smaller of the night need and that surplus
+      const want = L.backupNight*num(S.hyb.coverPct,100)/100;
+      const pvDaily=R.kWp*psh*pr, chargeable=Math.max(0,pvDaily-L.daily*L.dayShare)*eff;
+      usable = Math.min(want, chargeable); R.batWant=want; R.batChargeable=chargeable;
+      if(chargeable < want*0.98) R.notes.push('Battery sized to what the daytime solar surplus can refill (about '+r1(chargeable)+' kWh/day). The remaining '+r1(want-chargeable)+' kWh of night use comes from the grid. Add panels if you want the battery to cover more of the night.');
+    }
     else { const bkw = num(S.hyb.backupKW)>0 ? num(S.hyb.backupKW) : L.backupPeakKW*0.5; usable = bkw*num(S.hyb.outageH,4); R.backupKWused=bkw; }
     usable=Math.max(usable, 2);
     const nom = usable/(dod*eff);
-    const demandA = pick.n*pick.inv.kw*1000/(48*0.95);
+    const demandA = batteryDemandA({invN:pick.n, inv:pick.inv}, L, sys);
     const bat=chooseBattery(nom, demandA);
     R.bat=bat; R.batUsableReq=usable; R.batNomReq=nom; R.batDemandA=demandA;
     R.batUsable = bat.kwh*dod;
     if(bat.n>bat.b.parallel) R.warnings.push(bat.n+' batteries is more than the '+bat.b.parallel+'-unit parallel limit. Split into separate banks or use the larger battery model.');
-    if(bat.byI>bat.byE) R.notes.push('Battery quantity is set by current: the inverter can draw ~'+Math.round(demandA)+' A, and each battery supplies up to '+bat.b.maxI+' A.');
+    if(bat.byI>bat.byE) R.notes.push('Battery quantity is set by current: the peak load needs about '+Math.round(demandA)+' A from the batteries, and each supplies up to '+bat.b.maxI+' A.');
+    if(pick.n*pick.inv.kw*1000/(48*0.95) > bat.n*bat.b.maxI) R.notes.push('Set the inverter\'s maximum battery discharge current to '+Math.floor(bat.n*bat.b.maxI/10)*10+' A so it never draws more than the batteries can supply.');
     if(sys==='offgrid'){ const chg = pick.inv.chargeA*pick.n; R.notes.push('Total solar charge current: '+chg+' A (about '+r1(chg*54/1000)+' kW into the battery). The battery bank accepts up to '+bat.n*bat.b.maxI+' A.'); }
   }
 
+  energyBalance(R, L);
   // ---- Electrical BOS ----
   R.bos = bos(R, panel, sd, pick);
 
@@ -994,7 +1037,7 @@ function finance(R, L, panel){
   const yr1 = flows[0].sav;
   return { ePV1, ePVyr:ePV1*365, d1, solarFraction: Math.min(1,(d1.direct+d1.fromBat)/L.daily), offset: Math.min(1, (exportAllowed? ePV1 : (d1.direct+d1.fromBat))/L.daily), price:priceSys, yr1, monthly1:yr1/12,
     payback, total, net: total-priceSys, nmFee, netOn, breakdown:B, roi:(total-priceSys)/priceSys*100, flows, exportAllowed,
-    billBefore: L.monthly*rate, billAfter: Math.max(0, L.monthly*rate - yr1/12) };
+    billBefore: L.monthly*rate, billAfter: Math.max(0, L.monthly*rate - yr1/12), savePct: Math.min(100, (yr1/12)/Math.max(1,L.monthly*rate)*100) };
 }
 
 /* ======================================================================
@@ -1092,6 +1135,7 @@ function renderSys(){
   if(S.sys==='hybrid') o.innerHTML=`
     <div><label>Solar offset target (% of consumption)</label><input type="number" data-k="hybOffset"></div>
     <div><label>Battery sized to cover</label><select data-k="hyb.basis" id="hybBasis"><option value="night">Night-time usage of backed-up loads</option><option value="hours">Outage hours × backup load</option></select></div>
+    <div class="hn"><label>Share of night usage the battery covers (%)</label><input type="number" min="10" max="100" step="5" data-k="hyb.coverPct" placeholder="100"></div>
     <div class="hb"><label>Outage hours to cover</label><input type="number" data-k="hyb.outageH"></div>
     <div class="hb"><label>Average backup load during outage (kW)</label><input type="number" step="0.1" data-k="hyb.backupKW" placeholder="auto"></div>
     <div><label>Net metering</label><select data-k="netMeter"><option value="yes">Yes — export credited (+${peso(num(S.set.nmFee,50000))} application)</option><option value="no">No — zero export</option></select></div>`;
@@ -1100,7 +1144,7 @@ function renderSys(){
   else o.innerHTML=`<div><label>Solar offset target (% of consumption)</label><input type="number" data-k="gt.offset"></div>
     <div><label>Net metering</label><select data-k="netMeter"><option value="yes">Yes — export credited (+${peso(num(S.set.nmFee,50000))} application)</option><option value="no">No — zero export</option></select></div>`;
   bindInputs(o);
-  const hb=document.getElementById('hybBasis'); if(hb){ const f=()=>o.querySelectorAll('.hb').forEach(x=>x.style.opacity=S.hyb.basis==='hours'?1:.45); hb.addEventListener('change',f); f(); }
+  const hb=document.getElementById('hybBasis'); if(hb){ const f=()=>{ o.querySelectorAll('.hb').forEach(x=>x.style.opacity=S.hyb.basis==='hours'?1:.45); o.querySelectorAll('.hn').forEach(x=>x.style.opacity=S.hyb.basis==='night'?1:.45); }; hb.addEventListener('change',f); f(); }
 }
 function renderMethod(){
   document.querySelectorAll('#segMethod button').forEach(b=>b.classList.toggle('on',b.dataset.v===S.method));
@@ -1255,7 +1299,7 @@ function runCalc(){
   document.getElementById('resultsEmpty').classList.add('hidden');
   const box=document.getElementById('results'); box.classList.remove('hidden');
   if(R.error && !R.inv){ box.innerHTML=`<div class="errbox">${R.error}</div>`; showTab('results'); return; }
-  box.innerHTML=renderResults(R); showTab('results'); updateAdvCount();
+  box.innerHTML=renderResults(R); showTab('results'); updateAdvCount(); wireQtyInputs(R);
   document.getElementById('btnPrint').onclick=()=>window.print();
   document.getElementById('btnSaveProp').onclick=()=>saveProposal(R);
   document.getElementById('btnPdf').onclick=async()=>{ try{ flash('Preparing PDF…'); const pdf=await makePdf(R); pdf.save(pdfName(R)); flash('PDF downloaded.'); }catch(e){ flash('Could not create the PDF ('+e.message+'). Use Print → Save as PDF instead.'); } };
@@ -1272,10 +1316,10 @@ function renderResults(R){
   const notes = R.notes.map(w=>`<div class="okbox">${w}</div>`).join('');
   // equipment table
   const eq=[];
-  eq.push({img:p.img,item:'Solar panels', model:`${p.brand} ${p.model}`, spec:`${p.wp} W each · Voc ${p.voc} V · Isc ${p.isc} A`, qty:R.panels, url:p.url});
-  eq.push({img:inv.img,item:CAT_LABEL[inv.type]+' inverter', model:`${inv.brand} ${inv.model}`, spec:`${inv.kw} kW, 230 V single-phase · ${inv.mppt.length} MPPT · max PV ${inv.maxPV/1000} kWp${inv.type!=='gridtie'?' · 48 V battery':''}`, qty:R.invN, url:inv.url});
-  if(R.bat) eq.push({img:R.bat.b.img,item:'Battery (LiFePO4)', model:`${R.bat.b.brand} ${R.bat.b.model}`, spec:`${R.bat.b.kwh} kWh each · ${R.bat.b.v} V · total ${r2(R.bat.kwh)} kWh (${r1(R.batUsable)} kWh usable)`, qty:R.bat.n, url:R.bat.b.url});
-  const eqRows=eq.map(e=>`<tr><td><div class="imgslot">${e.img?`<img src="${e.img}" alt="">`:'photo'}</div></td><td><b>${e.item}</b><div>${e.model}</div><div class="small">${e.spec}</div></td><td class="num" style="font-size:18px;font-weight:700">${e.qty}</td><td class="noprint">${e.url?`<a href="${e.url}" target="_blank" rel="noopener">Datasheet</a>`:''}</td></tr>`).join('');
+  eq.push({key:'panels',img:p.img,item:'Solar panels', model:`${p.brand} ${p.model}`, spec:`${p.wp} W each · Voc ${p.voc} V · Isc ${p.isc} A`, qty:R.panels, url:p.url});
+  eq.push({key:'inv',img:inv.img,item:CAT_LABEL[inv.type]+' inverter', model:`${inv.brand} ${inv.model}`, spec:`${inv.kw} kW, 230 V single-phase · ${inv.mppt.length} MPPT · max PV ${inv.maxPV/1000} kWp${inv.type!=='gridtie'?' · 48 V battery':''}`, qty:R.invN, url:inv.url});
+  if(R.bat) eq.push({key:'bat',img:R.bat.b.img,item:'Battery (LiFePO4)', model:`${R.bat.b.brand} ${R.bat.b.model}`, spec:`${R.bat.b.kwh} kWh each · ${R.bat.b.v} V · total ${r2(R.bat.kwh)} kWh (${r1(R.batUsable)} kWh usable)`, qty:R.bat.n, url:R.bat.b.url});
+  const eqRows=eq.map(e=>`<tr><td><div class="imgslot">${e.img?`<img src="${e.img}" alt="">`:'photo'}</div></td><td><b>${e.item}</b><div>${e.model}</div><div class="small">${e.spec}</div></td><td class="num"><input type="number" min="${e.key==='bat'?0:1}" class="qtyin" data-q="${e.key}" value="${e.qty}" title="Change the quantity to update the whole proposal"></td><td class="noprint">${e.url?`<a href="${e.url}" target="_blank" rel="noopener">Datasheet</a>`:''}</td></tr>`).join('');
   // configuration text
   const mpptTxt = sd.perMppt.map((c,i)=>c?`MPPT ${i+1}: ${c} string${c>1?'s':''} × ${sd.mpptLen?sd.mpptLen[i]:sd.series} panels`:`MPPT ${i+1}: unused`).join(' · ');
   const strDesc = sd.uneven ? `${sd.strings} strings (${strList(sd).join(' + ')} panels) <b>in series</b>` : `${sd.strings} string${sd.strings>1?'s':''} × ${sd.series} panels <b>in series</b>`;
@@ -1309,21 +1353,25 @@ function renderResults(R){
       <div><div class="small">Basis of design</div>${S.method==='history'?`Average of ${L.monthsUsed} month(s) of bills: <b>${Math.round(L.monthly)} kWh/month</b>`:`Schedule of loads: <b>${r1(L.daily)} kWh/day</b>, connected ${Math.round(L.connectedW).toLocaleString()} W`}
       <div class="small tech">Peak demand ${r1(L.peakKW)} kW${L.peakEstimated?' (estimated)':''} · motor starting ~${r1(L.surgeKW)} kW · ${Math.round(L.dayShare*100)}% daytime use</div></div></div>
     <h3 style="margin-top:16px">System summary</h3>
-    <div class="kpis module">
+    <div class="kpis module" style="grid-template-columns:repeat(${(()=>{ const n=5+(R.sys!=='gridtie'?1:0)+(R.batHours?1:0); return n<=4?n:Math.ceil(n/2); })()},minmax(0,1fr))">
       <div class="kpi"><div class="v">${r2(R.kWp)} kWp</div><div class="l">Solar capacity (${R.panels} × ${p.wp} W)</div></div>
       <div class="kpi"><div class="v">${r1(R.invN*inv.kw)} kW</div><div class="l">Inverter (${R.invN} × ${inv.model})</div></div>
       <div class="kpi"><div class="v">${R.bat?r2(R.bat.kwh)+' kWh':'—'}</div><div class="l">${R.bat?`Battery (${R.bat.n} × ${R.bat.b.kwh} kWh, ${r1(R.batUsable)} kWh usable)`:'No battery (grid-tie)'}</div></div>
       <div class="kpi"><div class="v">${Math.round(f.ePVyr).toLocaleString()} kWh</div><div class="l">Est. solar production, year 1</div></div>
       <div class="kpi"><div class="v">${Math.round(f.offset*100)}%</div><div class="l">${f.exportAllowed?'Bill offset (incl. net-metering export)':'Of consumption supplied by solar'}</div></div>
       ${R.sys!=='gridtie'?`<div class="kpi"><div class="v">${Math.round(f.solarFraction*100)}%</div><div class="l">Self-supplied (solar + battery, no grid)</div></div>`:''}
+      ${R.batHours?`<div class="kpi"><div class="v">≈ ${r1(R.batHours.house)} h</div><div class="l">Battery runs the house at average use (≈ ${r1(R.batHours.night)} h of typical night use)</div></div>`:''}
     </div>
+    ${energyHTML(R,f)}
 
     <h3 style="margin-top:18px">${R.custom?'Selected equipment':'Recommended equipment'}</h3>
     <table><thead><tr><th style="width:66px"></th><th>Item</th><th class="num">Qty</th><th class="noprint"></th></tr></thead><tbody>${eqRows}</tbody></table>
+    <div class="small noprint" style="margin-top:6px">Change a quantity above and the whole proposal (design checks, wiring, savings, price) updates. It then becomes a custom setup.</div>
 
     <h3 style="margin-top:18px">Investment &amp; savings</h3>
     <div class="kpis">
       <div class="kpi"><div class="v">${peso(f.price)}</div><div class="l">Estimated system price${R.bat?' incl. '+R.bat.n+' batter'+(R.bat.n>1?'ies':'y'):''}${f.netOn?' & net metering':''} (≈ ${peso(f.price/R.kWp)}/kWp)</div></div>
+      <div class="kpi"><div class="v">${Math.round(f.savePct)}%</div><div class="l">${R.sys==='offgrid'?'Of the grid-equivalent bill replaced by solar':'Lower electric bill, year 1'}</div></div>
       <div class="kpi"><div class="v">${peso(f.monthly1)}</div><div class="l">Avg. monthly savings, year 1</div></div>
       <div class="kpi"><div class="v">${pb}</div><div class="l">Simple payback</div></div>
       <div class="kpi"><div class="v">${peso(f.net)}</div><div class="l">Net savings over ${set.years} years</div></div>
@@ -1366,6 +1414,35 @@ function renderResults(R){
       <li><b>Estimated price only, final price after full inspection.</b> This is a preliminary estimate. Final quantities, layout and price are confirmed after a site survey (roof condition, shading, orientation, panel board).</li>
     </ul>
   </div>`;
+}
+function energyHTML(R,f){
+  const E=R.energy; if(!E) return '';
+  const d=f.d1, eff=num(S.set.eff,95)/100, toBat=d.fromBat/eff, dayGrid=Math.max(0,E.dayLoad-d.direct), nightGrid=Math.max(0,E.nightLoad-d.fromBat);
+  const bar=(parts,total)=>`<div class="ebar">${parts.filter(p=>p[1]>0.05).map(p=>`<span class="${p[2]}" style="width:${Math.max(4,p[1]/total*100)}%" title="${p[0]}: ${r1(p[1])} kWh"></span>`).join('')}</div>`;
+  const dayTot=Math.max(E.pvDaily,0.01), nightTot=Math.max(E.nightLoad,0.01);
+  const exportLbl = f.exportAllowed?'exported to the grid (credited)':'not used (zero export)';
+  return `<h3 style="margin-top:18px">Your day and night with solar</h3>
+  <div class="ebal">
+    <div><div class="eh">Daytime, 6 am – 6 pm</div>
+      ${bar([['Used by the home',d.direct,'e-sun'],['Charges the battery',toBat,'e-bat'],['Exported / unused',d.exported+d.curtailed,'e-exp']],dayTot)}
+      <ul><li><b>${r1(E.pvDaily)} kWh</b> solar produced on an average day</li><li><b>${r1(d.direct)} kWh</b> used directly by the home (daytime use ${r1(E.dayLoad)} kWh${dayGrid>0.1?', '+r1(dayGrid)+' kWh still from the grid':''})</li>
+      ${R.bat?`<li><b>${r1(toBat)} kWh</b> charges the battery</li>`:''}${(d.exported+d.curtailed)>0.1?`<li><b>${r1(d.exported+d.curtailed)} kWh</b> ${exportLbl}</li>`:''}</ul></div>
+    <div><div class="eh">Night, 6 pm – 6 am</div>
+      ${bar([['From the battery',d.fromBat,'e-bat'],['From the grid',nightGrid,'e-grid']],nightTot)}
+      <ul><li><b>${r1(E.nightLoad)} kWh</b> used at night (aircon, lights, fridge)</li>
+      ${R.bat?`<li><b>${r1(d.fromBat)} kWh</b> from the battery (${Math.round(d.fromBat/nightTot*100)}% of the night)</li>`:''}
+      ${R.sys==='offgrid'?'':`<li><b>${r1(nightGrid)} kWh</b> from the grid</li>`}
+      ${R.batHours?`<li>Full battery: about <b>${r1(R.batHours.night)} hours</b> of typical night use, or <b>${r1(R.batHours.house)} hours</b> at the home's average use during an outage</li>`:''}</ul></div>
+  </div>`;
+}
+function wireQtyInputs(R){
+  document.querySelectorAll('#results .qtyin').forEach(inp=>inp.onchange=()=>{
+    const v=Math.max(+inp.min||0, Math.round(num(inp.value,0)));
+    Object.assign(S.custom,{sys:R.sys==='gridtie'?'':R.sys, inv:R.inv.id, invN:R.invN, panel:R.panel.id, panels:R.panels,
+      bat:R.bat?R.bat.b.id:(S.custom.bat||''), batN:R.bat?R.bat.n:0});
+    if(inp.dataset.q==='panels') S.custom.panels=v; else if(inp.dataset.q==='inv') S.custom.invN=Math.max(1,v); else S.custom.batN=v;
+    S.mode='custom'; save(); try{ renderCustom(); }catch(e){} runCalc(); flash('Updated with your quantities (now a custom setup).');
+  });
 }
 function esc(s){ return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 
@@ -1439,7 +1516,7 @@ function quoteText(R){
     greet, ``,
     `Thank you for considering Exoid Robotics for your solar energy needs. Based on ${basis}, we've designed a ${r2(R.kWp)} kWp ${kind} for your property. Here is a summary of your quote.`,
     ``, `YOUR SAVINGS AT A GLANCE`,
-    `• Estimated savings: ${peso(f.monthly1)} per month (about ${peso(f.yr1)} in the first year)`,
+    `• Estimated savings: ${peso(f.monthly1)} per month, about ${Math.round(f.savePct)}% of your electric bill (${peso(f.yr1)} in the first year)`,
     `• Payback period: about ${f.payback!==null? r1(f.payback)+' years' : 'more than '+yrs+' years'}`,
     `• Estimated net savings over ${yrs} years: ${peso(f.net)}`,
     `• Solar covers about ${Math.round(f.offset*100)}% of your electricity use`,
@@ -1448,6 +1525,7 @@ function quoteText(R){
     `• ${R.panels} × ${R.panel.brand} ${R.panel.model.replace(/\s*\(.*\)/,'')} solar panels (${R.panel.wp} W each)`,
     `• ${R.invN} × ${R.inv.brand} ${R.inv.model} ${CAT_LABEL[R.sys].toLowerCase()} inverter${R.invN>1?'s':''} (${r1(R.invN*R.inv.kw)} kW${R.invN>1?' total':''})`];
   if(R.bat) L1.push(`• ${R.bat.n} × ${R.bat.b.brand} ${R.bat.b.kwh} kWh LiFePO4 batter${R.bat.n>1?'ies':'y'} (${r1(R.bat.kwh)} kWh total storage)`);
+  if(R.batHours) L1.push(`• Battery backup: about ${Math.round(R.batHours.house)} hours at your home's average use`);
   L1.push(`• Complete protection devices, mounting structure and cabling`,
     `• Estimated solar production: ${Math.round(f.ePVyr).toLocaleString()} kWh per year`,
     ``, `NEXT STEPS`,
@@ -1545,9 +1623,10 @@ async function makePdf(R){
   const src=document.querySelector('#results .prop'); if(!src) throw new Error('no proposal on screen');
   const CW=700;                                   // content width in CSS px (= 186 mm on A4 with 12 mm margins)
   const el=src.cloneNode(true);
-  el.querySelectorAll('.tech,.noprint,.hideadv').forEach(n=>n.remove()); el.classList.add('pdfmode');   // client copy: no technical tables
+  el.querySelectorAll('.tech,.noprint,.hideadv').forEach(n=>n.remove()); el.classList.add('pdfmode');
+  el.querySelectorAll('input.qtyin').forEach(i=>{ const b=document.createElement('b'); b.textContent=i.value; b.style.fontSize='18px'; i.replaceWith(b); });   // client copy: no technical tables
   el.style.cssText='width:'+CW+'px;box-sizing:border-box;background:#fff;border:0;padding:0;margin:0;font-size:12.5px';
-  el.querySelectorAll('.kpis').forEach(k=>k.style.gridTemplateColumns='repeat(3,1fr)');
+  el.querySelectorAll('.kpis:not(.module)').forEach(k=>k.style.gridTemplateColumns='repeat(3,1fr)');
   el.querySelectorAll('.head').forEach(h=>{ h.style.flexWrap='nowrap'; h.firstElementChild.style.flex='1 1 auto'; });
   el.querySelectorAll('.diagram').forEach(d=>{ d.style.overflow='visible'; });
   el.querySelectorAll('svg').forEach(sv=>{ const vb=(sv.getAttribute('viewBox')||'').split(/\s+/).map(Number);
