@@ -105,11 +105,12 @@ function doPost(e) {
     return ContentService.createTextOutput('missing client email');
   }
   const cc = String(d.cc || '');
-  const bcc = [String(d.bcc || ''), BCC_ALWAYS].join(',').split(',').map(s => s.trim()).filter(String)
+  const bcc = [String(d.bcc || ''), d.noTeamCopies ? '' : BCC_ALWAYS].join(',')   // test account: no team copy.split(',').map(s => s.trim()).filter(String)
                 .filter((v, i, a) => a.indexOf(v) === i).join(',');
   const html = '<div style="font-family:Arial,sans-serif;font-size:14px;white-space:pre-wrap">' +
                String(d.body).replace(/[<>&]/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;'}[c])) + '</div>';
-  const mail = { to: d.to, subject: d.subject, body: d.body, htmlBody: html, name: 'Exoid Robotics', replyTo: REPLY_TO, bcc: bcc };
+  const mail = { to: d.to, subject: d.subject, body: d.body, htmlBody: html, name: 'Exoid Robotics', replyTo: REPLY_TO };
+  if (bcc) mail.bcc = bcc;
   if (cc) mail.cc = cc;
   if (d.pdfBase64) {
     mail.attachments = [Utilities.newBlob(Utilities.base64Decode(d.pdfBase64), 'application/pdf', d.pdfName || 'Exoid Solar Proposal.pdf')];

@@ -131,6 +131,9 @@ tr.grand td{font-weight:800;font-size:15.5px;border-top:2px solid var(--cell);bo
 input.qtyin{width:84px;text-align:right;font-size:18px;font-weight:700;padding:4px 6px;border:1px solid var(--line);border-radius:6px}
 @media(max-width:820px){.ebal{grid-template-columns:1fr}}
 @media print{.qtyin{border:0;padding:0}}
+.testonly{display:none}
+body.testmode .testonly{display:block}
+body.testmode header.top .title::after{content:"Test mode";margin-left:10px;padding:2px 8px;border-radius:999px;background:#F28C28;color:#1d1205;font-size:11.5px;font-weight:700;vertical-align:middle}
 /* catalog */
 #catModal{position:fixed;inset:0;background:rgba(22,33,46,.5);display:flex;align-items:flex-start;justify-content:center;padding:30px 12px;z-index:50;overflow:auto}
 #catModal .box{background:#fff;border-radius:10px;max-width:760px;width:100%;padding:20px;border:1px solid var(--line)}
@@ -199,7 +202,7 @@ body.adv .hideadv{display:none}
     <svg width="26" height="26" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="7" fill="#f2a900"/><g stroke="#f2a900" stroke-width="2.4" stroke-linecap="round"><path d="M17 2v5M17 27v5M2 17h5M27 17h5M6.4 6.4l3.5 3.5M24.1 24.1l3.5 3.5M6.4 27.6l3.5-3.5M24.1 9.9l3.5-3.5"/></g></svg>
     <div class="title">Exoid <span>Solar</span></div>
     <div class="sp"></div>
-    <div class="who"><span id="whoLbl"></span><div style="font-size:10px;opacity:.6">Version 2026-11-18 19:00</div></div>
+    <div class="who"><span id="whoLbl"></span><div style="font-size:10px;opacity:.6">Version 2026-11-18 19:30</div></div>
     <button class="btn ghost sm" id="btnFull" title="Use the whole screen (Esc to exit)">⛶ Full screen</button>
     <button class="btn ghost sm" id="btnAdv" title="Show or hide technical details (wiring, protection, string voltages, installer notes)">⚙ Advanced<span class="cnt hidden" id="advCnt"></span></button>
     <button class="btn ghost sm" id="btnNew">+ New proposal</button>
@@ -410,6 +413,7 @@ body.adv .hideadv{display:none}
       <div class="grid g2">
         <div><label>CC every quote to (visible to the client, usually blank)</label><input data-k="set.ccEmail"></div>
         <div><label>BCC every quote to (hidden copies for the team, comma-separated)</label><input data-k="set.bccEmail"></div>
+        <div class="testonly" style="grid-column:1/-1"><label>Test recipient email (test account only). Proposals go only here: not to the client, CC or team copies</label><input type="email" data-k="set.testEmail" placeholder="you@example.com"></div>
         <div><label>Signature — name (blank = "Prepared by")</label><input data-k="set.sigName"></div>
         <div><label>Signature — title</label><input data-k="set.sigTitle"></div>
         <div><label>Signature — mobile / phone</label><input data-k="set.sigPhone" placeholder="e.g. 0917 123 4567"></div>
@@ -505,7 +509,9 @@ function invFamily(type){ return CATALOG.inverters.filter(i=>isAvail(i) && (i.ty
 const USERS = {
   '100EXD': {name:'Engr. Michelangelo Barroga', hash:'bdfad972549c3cba19ef0cc8076ec59999dbe2e6da244e78daad80194073a265'},
   '100RJT': {name:'Engr. Riego Jeremy Terte',   hash:'c758a1dadcba4407f3208728fe40202d1f789e024129a336371b59cf9b07f09b'},
-  '100MAB': {name:'Engr. Mark Aaron Barroga',   hash:'b791523d47192653929bb31af8cef1b905264ad85eff189b8267fdf1d2fa50a3'}
+  '100MAB': {name:'Engr. Mark Aaron Barroga',   hash:'b791523d47192653929bb31af8cef1b905264ad85eff189b8267fdf1d2fa50a3'},
+  // test account: proposals are emailed only to the "Test recipient" in Assumptions; no client, CC or team copies
+  '100TST': {name:'Test Account',               hash:'0de41d158c0e70b04f68800b368600902e98968cf6f3993fe2a0b020554f0ae4', test:true}
 };
 const PBKDF2_ITER = 150000;
 // Quote-mailer (Apps Script) URL, AES-256-GCM encrypted with a key derived from the shared installer password.
@@ -532,7 +538,8 @@ const store = { get(k){try{return localStorage.getItem(k);}catch(e){return null;
   sget(k){try{return sessionStorage.getItem(k);}catch(e){return null;}}, sset(k,v){try{sessionStorage.setItem(k,v);}catch(e){}}, sdel(k){try{sessionStorage.removeItem(k);}catch(e){}} };
 let SESSION_USER = null;
 let SESSION_NAME = '';
-function showApp(code){ SESSION_USER=code; SESSION_NAME=(USERS[code]&&USERS[code].name)||('Installer '+code); document.getElementById('login').classList.add('hidden'); document.getElementById('app').classList.remove('hidden');
+let SESSION_TEST=false;
+function showApp(code){ SESSION_USER=code; SESSION_NAME=(USERS[code]&&USERS[code].name)||('Installer '+code); SESSION_TEST=!!(USERS[code]&&USERS[code].test); document.body.classList.toggle('testmode',SESSION_TEST); document.getElementById('login').classList.add('hidden'); document.getElementById('app').classList.remove('hidden');
   document.getElementById('whoLbl').textContent=SESSION_NAME+' ('+code+')'; S.set.preparedBy=SESSION_NAME; save(); init(); loadSharedCatalog(); showTab('proposals'); loadProposalList(); }
 document.getElementById('loginForm').addEventListener('submit', async e=>{
   e.preventDefault();
@@ -1343,7 +1350,7 @@ function openCatEditor(kind, item){
 /* ---------------- Results rendering ---------------- */
 function runCalc(){
   const note=document.getElementById('calcNote');
-  if(!S.client.email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(S.client.email)){ note.innerHTML='<span style="color:var(--err)">Client email is required (quotes are sent there).</span>'; document.getElementById('cEmail').focus(); return; }
+  if(!SESSION_TEST && (!S.client.email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(S.client.email))){ note.innerHTML='<span style="color:var(--err)">Client email is required (quotes are sent there).</span>'; document.getElementById('cEmail').focus(); return; }
   note.textContent='';
   const R=(S.mode==='custom'?calculateCustom():calculate()); LAST=R;
   document.getElementById('resultsEmpty').classList.add('hidden');
@@ -1753,7 +1760,11 @@ async function makePdf(R){
 
 /* ---------------- Quote email ---------------- */
 async function emailQuote(R){
-  const to=S.client.email, cc=S.set.ccEmail||'', bcc=(S.set.bccEmail||'').split(/[,;\s]+/).filter(x=>x.includes('@')).join(','), subj=quoteSubject(R);
+  let to=S.client.email, cc=S.set.ccEmail||'', bcc=(S.set.bccEmail||'').split(/[,;\s]+/).filter(x=>x.includes('@')).join(','), subj=quoteSubject(R);
+  if(SESSION_TEST){
+    to=(S.set.testEmail||'').trim(); cc=''; bcc=''; subj='[TEST] '+subj;
+    if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(to)){ flash('Test account: enter a Test recipient email in Assumptions → Quote email first.'); showTab('settings'); const ti=document.querySelector('[data-k="set.testEmail"]'); if(ti){ ti.scrollIntoView({block:'center'}); ti.focus(); } return; }
+  }
   const body=quoteText(R);
   const hook = S.set.webhook || store.sget('exoid_mail') || '';
   const btn=document.getElementById('btnEmail'); btn.disabled=true;
@@ -1761,12 +1772,12 @@ async function emailQuote(R){
   try{ flash('Preparing PDF…'); pdf=await makePdf(R); }catch(e){ pdf=null; }
   try{
     if(hook){
-      const payload={to,cc,bcc,subject:subj,body,client:S.client,installer:SESSION_NAME+' ('+SESSION_USER+')',kWp:R.kWp,system:R.sys,price:Math.round(R.fin.price),
+      const payload={to,cc,bcc,noTeamCopies:SESSION_TEST,subject:subj,body,client:S.client,installer:SESSION_NAME+' ('+SESSION_USER+')',kWp:R.kWp,system:R.sys,price:Math.round(R.fin.price),
         panels:R.panels,inverter:R.invN+' x '+R.inv.model,battery:R.bat?R.bat.n+' x '+R.bat.b.model:'none',payback:R.fin.payback};
       if(pdf){ payload.pdfName=pdfName(R); payload.pdfBase64=pdf.output('datauristring').split(',')[1]; }
       flash('Sending…');
       await fetch(hook,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
-      flash('Proposal sent to '+to+(pdf?' with the PDF attached.':'. The PDF could not be created, so it was sent without an attachment.')+' Team copies sent.');
+      flash('Proposal sent to '+to+(pdf?' with the PDF attached.':'. The PDF could not be created, so it was sent without an attachment.')+(SESSION_TEST?' (Test account: no client or team copies.)':' Team copies sent.'));
     } else {
       if(pdf) pdf.save(pdfName(R));
       openMail(to,cc,bcc,subj,body,!!pdf);
