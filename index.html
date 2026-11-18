@@ -4,93 +4,152 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Exoid Robotics – Solar Sizing & Proposal Tool</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
+/* Exoid "daylight blueprint": cell blue + Exoid amber on cool sky */
 :root{
-  --bg:#f5f7fa; --card:#fff; --ink:#1b2430; --muted:#5d6b7a; --line:#dde3ea;
-  --brand:#0b5cad; --brand2:#0a8f6a; --warn:#b26a00; --warnbg:#fff6e5; --err:#b3261e; --errbg:#fdecea;
-  --okbg:#e8f6f0; --sun:#f2a900;
+  --cell:#1D3B5C; --cell2:#24496F; --cellline:rgba(255,255,255,.14);
+  --amber:#F28C28; --amber2:#D9741A; --sky:#F2F5F8; --card:#FFFFFF; --ink:#16212E; --muted:#5B6B7C;
+  --line:#D9E1E8; --line2:#E8EDF2; --leaf:#2F8F5B; --leafbg:#E9F5EE;
+  --warn:#A86200; --warnbg:#FFF5E6; --err:#B3261E; --errbg:#FDEDEC;
+  --brand:var(--cell); --brand2:var(--leaf); --r:8px;
 }
 *{box-sizing:border-box}
-body{margin:0;font-family:"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.45}
-h1,h2,h3{margin:0 0 .5em;line-height:1.2}
-h2{font-size:18px} h3{font-size:15px}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;font-family:"Archivo",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--sky);color:var(--ink);font-size:14.5px;line-height:1.5;font-variant-numeric:tabular-nums}
+h1,h2,h3{margin:0 0 .55em;line-height:1.2;font-weight:700;letter-spacing:-.01em}
+h1{font-size:26px} h2{font-size:19px} h3{font-size:15.5px}
+a{color:var(--cell2)}
 button{font:inherit;cursor:pointer}
-input,select{font:inherit;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink);min-width:0}
+input,select{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:#fff;color:var(--ink);min-width:0;transition:border-color .15s, box-shadow .15s}
+input:focus,select:focus{outline:none;border-color:var(--cell2);box-shadow:0 0 0 3px rgba(36,73,111,.18)}
+button:focus-visible{outline:3px solid rgba(242,140,40,.55);outline-offset:2px}
 input[type=number]{width:100%}
-.grid input,.grid select{width:100%}
-label{display:block;font-size:12px;color:var(--muted);margin-bottom:3px}
-.small{font-size:12px;color:var(--muted)}
-.btn{background:var(--brand);color:#fff;border:0;border-radius:8px;padding:9px 16px;font-weight:600}
-.btn:hover{filter:brightness(1.08)}
-.btn.sec{background:#fff;color:var(--brand);border:1px solid var(--brand)}
-.btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--line)}
-.btn.green{background:var(--brand2)}
-.btn.sm{padding:5px 10px;font-size:12px}
+label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:4px;font-weight:500}
+.small{font-size:12.5px;color:var(--muted)}
+/* buttons */
+.btn{background:var(--cell);color:#fff;border:1px solid var(--cell);border-radius:6px;padding:9px 16px;font-weight:600;letter-spacing:.005em}
+.btn:hover{background:var(--cell2)}
+.btn.green{background:var(--amber);border-color:var(--amber);color:#1d1205}
+.btn.green:hover{background:var(--amber2);border-color:var(--amber2)}
+.btn.sec{background:#fff;color:var(--cell);border-color:var(--cell)}
+.btn.sec:hover{background:#EEF3F8}
+.btn.ghost{background:transparent;color:var(--muted);border-color:var(--line)}
+.btn.ghost:hover{background:#fff;color:var(--ink)}
+.btn.sm{padding:5px 10px;font-size:12.5px}
+.btn:disabled{opacity:.55;cursor:wait}
 /* login */
-#login{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-.loginbox{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:28px;width:100%;max-width:360px;box-shadow:0 6px 24px rgba(0,0,0,.06)}
-.loginbox .logo{display:flex;align-items:center;gap:10px;margin-bottom:18px}
-.loginbox input{width:100%;margin-bottom:12px}
-.err{color:var(--err);font-size:13px;min-height:18px}
-/* app */
-header.top{background:#0d2238;color:#fff;padding:12px 20px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
-header.top .title{font-weight:700;font-size:16px}
+#login{min-height:100vh;display:grid;grid-template-columns:1.1fr 1fr;background:#fff}
+.loginart{position:relative;background:var(--cell);color:#fff;padding:48px;display:flex;flex-direction:column;justify-content:space-between;overflow:hidden;
+  background-image:linear-gradient(var(--cellline) 1px,transparent 1px),linear-gradient(90deg,var(--cellline) 1px,transparent 1px);background-size:58px 92px;background-position:-1px -1px}
+.loginart .sun{position:absolute;right:-70px;top:-70px;width:230px;height:230px;border-radius:50%;background:#F28C28;box-shadow:0 0 0 22px rgba(255,255,255,.06),0 0 0 44px rgba(255,255,255,.035)}
+.loginart h1{font-size:40px;line-height:1.08;max-width:12ch;font-weight:800;letter-spacing:-.02em}
+.loginart p{max-width:40ch;color:#C9D6E3;margin:0}
+.loginart .brand{display:flex;align-items:center;gap:10px;font-weight:700}
+.loginside{display:flex;align-items:center;justify-content:center;padding:32px}
+.loginbox{width:100%;max-width:340px}
+.loginbox h2{font-size:22px;margin-bottom:4px}
+.loginbox input{width:100%;margin-bottom:14px}
+.err{color:var(--err);font-size:13px;min-height:18px;margin-bottom:6px}
+@media(max-width:820px){#login{grid-template-columns:1fr}.loginart{padding:28px;min-height:210px}.loginart h1{font-size:28px}}
+/* app chrome */
+header.top{background:var(--cell);color:#fff;padding:10px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:0;z-index:20}
+header.top .title{font-weight:700;font-size:16px;letter-spacing:-.01em}
+header.top .title span{color:#F7B26B;font-weight:600}
 header.top .sp{flex:1}
-header.top .who{font-size:12px;opacity:.8}
-nav.tabs{display:flex;gap:4px;padding:0 16px;background:#fff;border-bottom:1px solid var(--line);overflow-x:auto}
-nav.tabs button{border:0;background:none;padding:12px 14px;color:var(--muted);font-weight:600;border-bottom:3px solid transparent;white-space:nowrap}
-nav.tabs button.on{color:var(--brand);border-bottom-color:var(--brand)}
-main{padding:18px;max-width:1180px;margin:0 auto}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:16px}
-.grid{display:grid;gap:12px}
+header.top .who{font-size:12.5px;color:#C9D6E3;text-align:right;line-height:1.25;margin-right:6px}
+header.top .btn.ghost{color:#E6EEF6;border-color:rgba(255,255,255,.25)}
+header.top .btn.ghost:hover{background:rgba(255,255,255,.08);color:#fff}
+nav.tabs{display:flex;gap:2px;padding:0 16px;background:#fff;border-bottom:1px solid var(--line);overflow-x:auto;position:sticky;top:52px;z-index:19}
+nav.tabs button{border:0;background:none;padding:13px 14px 11px;color:var(--muted);font-weight:600;border-bottom:3px solid transparent;white-space:nowrap}
+nav.tabs button:hover{color:var(--ink)}
+nav.tabs button.on{color:var(--cell);border-bottom-color:var(--amber)}
+main{padding:22px 18px 40px;max-width:1180px;margin:0 auto}
+@media(max-width:820px){header.top{position:static}nav.tabs{top:0}main{padding:16px 10px 32px}.card{padding:16px}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin-bottom:16px}
+.card > h2:first-child{padding-bottom:10px;margin-bottom:14px;border-bottom:1px solid var(--line2)}
+.grid{display:grid;gap:14px}
 .g2{grid-template-columns:repeat(2,minmax(0,1fr))}
 .g3{grid-template-columns:repeat(3,minmax(0,1fr))}
 .g4{grid-template-columns:repeat(4,minmax(0,1fr))}
 .g6{grid-template-columns:repeat(6,minmax(0,1fr))}
+.grid input,.grid select{width:100%}
 @media(max-width:820px){.g3,.g4,.g6{grid-template-columns:repeat(2,minmax(0,1fr))}.g2{grid-template-columns:1fr}}
-.seg{display:inline-flex;border:1px solid var(--line);border-radius:9px;overflow:hidden;flex-wrap:wrap}
-.seg button{border:0;background:#fff;padding:9px 14px;color:var(--muted);font-weight:600;border-right:1px solid var(--line)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;flex-wrap:wrap;background:#fff}
+.seg button{border:0;background:#fff;padding:9px 15px;color:var(--muted);font-weight:600;border-right:1px solid var(--line)}
 .seg button:last-child{border-right:0}
-.seg button.on{background:var(--brand);color:#fff}
-.hint{background:#eef4fb;border-left:3px solid var(--brand);padding:8px 12px;border-radius:6px;font-size:13px;color:#24405e;margin:8px 0}
+.seg button.on{background:var(--cell);color:#fff}
+.hint{background:#EEF3F8;border-left:3px solid var(--cell2);padding:9px 12px;border-radius:0 6px 6px 0;font-size:13.5px;color:#2A425C;margin:10px 0}
 table{border-collapse:collapse;width:100%}
-th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left;vertical-align:middle}
-th{font-size:12px;color:var(--muted);font-weight:600;background:#fafbfc}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line2);text-align:left;vertical-align:middle}
+th{font-size:12.5px;color:var(--muted);font-weight:600;background:#F7F9FB;border-bottom:1px solid var(--line)}
 td.num,th.num{text-align:right}
-.loads input,.loads select{width:100%;padding:5px 6px}
+tr.sub td{background:#F7F9FB;font-weight:600}
+tr.sub.profit td{background:var(--leafbg);color:#1E5E3B}
+tr.grand td{font-weight:800;font-size:15.5px;border-top:2px solid var(--cell);border-bottom:0}
+.loads input,.loads select{width:100%;padding:6px 7px}
 .loads td{padding:4px}
 .tablewrap{overflow-x:auto}
-.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
-.kpi{border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:#fff}
-.kpi .v{font-size:20px;font-weight:700}
-.kpi .l{font-size:12px;color:var(--muted)}
-.warnbox{background:var(--warnbg);border-left:3px solid var(--warn);padding:8px 12px;border-radius:6px;margin:6px 0;font-size:13px}
-.errbox{background:var(--errbg);border-left:3px solid var(--err);padding:8px 12px;border-radius:6px;margin:6px 0;font-size:13px}
-.okbox{background:var(--okbg);border-left:3px solid var(--brand2);padding:8px 12px;border-radius:6px;margin:6px 0;font-size:13px}
-.pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:600;background:#eef2f6;color:var(--muted)}
+/* KPI tiles (light) and the solar-module summary (signature) */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px}
+.kpi{border:1px solid var(--line);border-radius:6px;padding:12px 14px;background:#fff}
+.kpi .v{font-size:21px;font-weight:700;letter-spacing:-.01em}
+.kpi .l{font-size:12.5px;color:var(--muted)}
+.kpis.module{gap:0;border-radius:6px;overflow:hidden;background:var(--cell);border:3px solid #C9D3DD;box-shadow:inset 0 0 0 1px var(--cell)}
+.kpis.module .kpi{background:transparent;border:0;border-right:1px solid var(--cellline);border-bottom:1px solid var(--cellline);border-radius:0;padding:16px 16px 14px;color:#fff;position:relative}
+.kpis.module .kpi::after{content:"";position:absolute;inset:6px;border:1px dashed rgba(255,255,255,.06);pointer-events:none}
+.kpis.module .kpi .v{font-size:24px;color:#fff}
+.kpis.module .kpi:first-child .v{color:#F7B26B}
+.kpis.module .kpi .l{color:#B9C9D9}
+.warnbox{background:var(--warnbg);border-left:3px solid var(--warn);padding:9px 12px;border-radius:0 6px 6px 0;margin:6px 0;font-size:13.5px}
+.errbox{background:var(--errbg);border-left:3px solid var(--err);padding:9px 12px;border-radius:0 6px 6px 0;margin:6px 0;font-size:13.5px}
+.okbox{background:var(--leafbg);border-left:3px solid var(--leaf);padding:9px 12px;border-radius:0 6px 6px 0;margin:6px 0;font-size:13.5px}
+.pill{display:inline-block;padding:1px 8px;border-radius:999px;font-size:11.5px;font-weight:600;background:#EEF2F6;color:var(--muted)}
 .pill.v{background:var(--warnbg);color:var(--warn)}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
 .right{margin-left:auto}
 .hidden{display:none!important}
-.diagram{width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:#fcfdfe}
-.prop h1{font-size:22px}
-.prop .head{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-bottom:2px solid var(--brand);padding-bottom:10px;margin-bottom:12px}
-.imgslot{width:56px;height:56px;border:1px dashed var(--line);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);text-align:center;overflow:hidden;background:#fafbfc}
+.diagram{width:100%;overflow-x:auto;border:1px solid var(--line);border-radius:6px;background:#FBFCFD;
+  background-image:linear-gradient(#EEF2F6 1px,transparent 1px),linear-gradient(90deg,#EEF2F6 1px,transparent 1px);background-size:24px 24px}
+.prop h1{font-size:28px;font-weight:800;letter-spacing:-.02em}
+.prop h3{margin-top:22px!important;padding-bottom:6px;border-bottom:1px solid var(--line2)}
+.prop .head{display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;border-bottom:3px solid var(--amber);padding-bottom:12px;margin-bottom:14px}
+.imgslot{width:58px;height:58px;border:1px dashed var(--line);border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--muted);text-align:center;overflow:hidden;background:#fff}
 .imgslot img{max-width:100%;max-height:100%}
+.pricenote{margin:12px 0 4px;padding:9px 12px;border:1px solid #F5C189;background:#FFF6EC;border-radius:6px;font-weight:700;color:#8A4B06}
+/* catalog */
+#catModal{position:fixed;inset:0;background:rgba(22,33,46,.5);display:flex;align-items:flex-start;justify-content:center;padding:30px 12px;z-index:50;overflow:auto}
+#catModal .box{background:#fff;border-radius:10px;max-width:760px;width:100%;padding:20px;border:1px solid var(--line)}
+.catrow-off{opacity:.45}
+.catbtns{white-space:nowrap;text-align:right}
+.catbtns .btn{margin:2px}
+.pricecell{width:150px}
+.pricecell label{font-size:11.5px;margin-bottom:2px}
+.pricecell input{padding:6px 8px;font-weight:600}
+/* custom setup */
+.cgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.cbox{border:1px solid var(--line);border-radius:6px;padding:14px;background:#FBFCFD}
+.cbox h3{margin-bottom:10px}
+.cbox select,.cbox input{width:100%;margin-bottom:10px}
+.cusum{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-top:14px;background:var(--cell);border-radius:6px;overflow:hidden;
+  background-image:linear-gradient(90deg,var(--cellline) 1px,transparent 1px);background-size:25% 100%}
+.cusum div{padding:12px 14px;color:#fff}
+.cusum b{display:block;font-size:20px}
+.cusum span{font-size:12.5px;color:#B9C9D9}
+@media(max-width:820px){.cgrid{grid-template-columns:1fr}.cusum{grid-template-columns:repeat(2,1fr)}}
+/* advanced mode */
 .tech{display:none!important}
 body.adv .tech{display:revert!important}
 body.adv tr.tech{display:table-row!important}
 body.adv .hideadv{display:none}
-#btnAdv.on{background:#f2a900;color:#0d2238;border-color:#f2a900}
-#btnAdv .cnt{display:inline-block;min-width:18px;padding:0 5px;margin-left:6px;border-radius:9px;background:#b26a00;color:#fff;font-size:11px}
-.pricenote{margin:10px 0 4px;padding:8px 12px;border:1px solid #f2a900;background:#fff8e6;border-radius:8px;font-weight:700;color:#7a4b00}
-#catModal{position:fixed;inset:0;background:rgba(13,34,56,.45);display:flex;align-items:flex-start;justify-content:center;padding:30px 12px;z-index:50;overflow:auto}
-#catModal .box{background:#fff;border-radius:12px;max-width:760px;width:100%;padding:18px;box-shadow:0 10px 40px rgba(0,0,0,.2)}
-.catrow-off{opacity:.45}
-.catbtns{white-space:nowrap}
-.catbtns .btn{margin:2px}
+#btnAdv.on{background:var(--amber);color:#1d1205;border-color:var(--amber)}
+#btnAdv .cnt{display:inline-block;min-width:18px;padding:0 5px;margin-left:6px;border-radius:9px;background:#B3261E;color:#fff;font-size:11px}
+/* PDF capture: html2canvas mis-measures letter-spacing and tabular figures */
+.pdfmode,.pdfmode *{letter-spacing:normal!important;font-variant-numeric:normal!important;font-feature-settings:normal!important}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
 @media print{
-  header.top,nav.tabs,.noprint,#tab-input,#tab-settings,#tab-catalog,#tab-proposals{display:none!important}
+  header.top,nav.tabs,.noprint,#tab-input,#tab-custom,#tab-settings,#tab-catalog,#tab-proposals{display:none!important}
   #tab-results{display:block!important}
   body{background:#fff}
   .card{border:0;padding:0;margin-bottom:14px;break-inside:avoid}
@@ -102,36 +161,42 @@ body.adv .hideadv{display:none}
 
 <!-- ============ LOGIN ============ -->
 <div id="login">
+  <div class="loginart">
+    <div class="sun" aria-hidden="true"></div>
+    <div class="brand"><svg width="26" height="26" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="7" fill="#F28C28"/><g stroke="#F28C28" stroke-width="2.4" stroke-linecap="round"><path d="M17 2v5M17 27v5M2 17h5M27 17h5M6.4 6.4l3.5 3.5M24.1 24.1l3.5 3.5M6.4 27.6l3.5-3.5M24.1 9.9l3.5-3.5"/></g></svg>Exoid Robotics</div>
+    <div><h1>Size it right. Quote it on the spot.</h1><p>Solar sizing, equipment selection and client proposals for the Exoid installation team.</p></div>
+  </div>
+  <div class="loginside">
   <form class="loginbox" id="loginForm" autocomplete="off">
-    <div class="logo">
-      <svg width="34" height="34" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="7" fill="#f2a900"/><g stroke="#f2a900" stroke-width="2.4" stroke-linecap="round"><path d="M17 2v5M17 27v5M2 17h5M27 17h5M6.4 6.4l3.5 3.5M24.1 24.1l3.5 3.5M6.4 27.6l3.5-3.5M24.1 9.9l3.5-3.5"/></g></svg>
-      <div><div style="font-weight:700">Exoid Robotics</div><div class="small">Solar Sizing &amp; Proposal Tool — installers only</div></div>
-    </div>
+    <h2>Installer log in</h2>
+    <p class="small" style="margin:0 0 18px">Use your installer code and the team password.</p>
     <label for="lgCode">Installer code</label>
     <input id="lgCode" required autocapitalize="characters">
     <label for="lgPw">Password</label>
     <input id="lgPw" type="password" required>
     <div class="err" id="lgErr"></div>
-    <button class="btn" style="width:100%">Log in</button>
+    <button class="btn green" style="width:100%">Log in</button>
   </form>
+  </div>
 </div>
 
 <!-- ============ APP ============ -->
 <div id="app" class="hidden">
   <header class="top">
     <svg width="26" height="26" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="7" fill="#f2a900"/><g stroke="#f2a900" stroke-width="2.4" stroke-linecap="round"><path d="M17 2v5M17 27v5M2 17h5M27 17h5M6.4 6.4l3.5 3.5M24.1 24.1l3.5 3.5M6.4 27.6l3.5-3.5M24.1 9.9l3.5-3.5"/></g></svg>
-    <div class="title">Exoid Solar Sizing &amp; Proposal</div>
+    <div class="title">Exoid <span>Solar</span></div>
     <div class="sp"></div>
-    <div class="who"><span id="whoLbl"></span><div style="font-size:10px;opacity:.6">Version 2026-11-18 16:05</div></div>
-    <button class="btn ghost sm" style="color:#fff;border-color:#40566e" id="btnFull" title="Use the whole screen (Esc to exit)">⛶ Full screen</button>
-    <button class="btn ghost sm" style="color:#fff;border-color:#40566e" id="btnAdv" title="Show or hide technical details (wiring, protection, string voltages, installer notes)">⚙ Advanced<span class="cnt hidden" id="advCnt"></span></button>
-    <button class="btn ghost sm" style="color:#fff;border-color:#40566e" id="btnNew">+ New proposal</button>
-    <button class="btn ghost sm" style="color:#fff;border-color:#40566e" id="btnLogout">Log out</button>
+    <div class="who"><span id="whoLbl"></span><div style="font-size:10px;opacity:.6">Version 2026-11-18 17:00</div></div>
+    <button class="btn ghost sm" id="btnFull" title="Use the whole screen (Esc to exit)">⛶ Full screen</button>
+    <button class="btn ghost sm" id="btnAdv" title="Show or hide technical details (wiring, protection, string voltages, installer notes)">⚙ Advanced<span class="cnt hidden" id="advCnt"></span></button>
+    <button class="btn ghost sm" id="btnNew">+ New proposal</button>
+    <button class="btn ghost sm" id="btnLogout">Log out</button>
   </header>
   <nav class="tabs">
     <button data-tab="proposals">📁 Proposals</button>
-    <button data-tab="input" class="on">1 · Project &amp; loads</button>
-    <button data-tab="results">2 · Recommendation &amp; proposal</button>
+    <button data-tab="input" class="on">Project &amp; loads</button>
+    <button data-tab="custom">Custom setup</button>
+    <button data-tab="results">Proposal</button>
     <button data-tab="settings">Assumptions</button>
     <button data-tab="catalog">Equipment catalog</button>
   </nav>
@@ -241,6 +306,26 @@ body.adv .hideadv{display:none}
     <div class="row noprint">
       <button class="btn green" id="btnCalc">Calculate recommendation →</button>
       <span class="small" id="calcNote"></span>
+    </div>
+  </section>
+
+  <!-- ========== CUSTOM TAB ========== -->
+  <section id="tab-custom" class="hidden">
+    <div class="card">
+      <h2>Custom setup</h2>
+      <p class="small" style="margin-top:-4px">Choose the exact equipment and quantities. The tool checks the design (string voltages, inverter limits, battery current) and builds the same proposal, using the client and consumption from <b>Project &amp; loads</b>.</p>
+      <div class="cgrid">
+        <div class="cbox"><h3>Inverter</h3><label>Model</label><select id="cuInv"></select><label>Quantity</label><input type="number" min="1" id="cuInvN"></div>
+        <div class="cbox"><h3>Solar panels</h3><label>Model</label><select id="cuPanel"></select><label>Quantity</label><input type="number" min="1" id="cuPanels"></div>
+        <div class="cbox"><h3>Batteries</h3><label>Model</label><select id="cuBat"></select><label>Quantity</label><input type="number" min="0" id="cuBatN"></div>
+      </div>
+      <div class="row" style="margin-top:12px"><div id="cuSysWrap" class="hidden"><label>Run this inverter as</label><select id="cuSys"><option value="hybrid">Hybrid (grid + battery)</option><option value="offgrid">Off-grid</option></select></div></div>
+      <div class="cusum" id="cuSum"></div>
+      <div class="row" style="margin-top:14px">
+        <button class="btn green" id="btnCustomCalc">Build custom proposal</button>
+        <button class="btn ghost" id="btnCustomFromAuto">Start from the recommendation</button>
+        <span class="small" id="cuNote"></span>
+      </div>
     </div>
   </section>
 
@@ -458,7 +543,7 @@ function monthsBack(){ const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug',
   for(let i=1;i<=6;i++){ const x=new Date(d.getFullYear(), d.getMonth()-i, 1); out.push(m[x.getMonth()]+' '+x.getFullYear()); } return out; }
 function defaultState(){ return {
   client:{name:'',email:'',phone:'',address:'',site:''}, pid:null, savedAt:null, author:'',
-  sys:'hybrid', method:'history', netMeter:'yes', laborDays:'',
+  sys:'hybrid', method:'history', netMeter:'yes', laborDays:'', mode:'auto', custom:{sys:'', inv:'SPM6000', invN:1, panel:'JK620', panels:12, bat:'UB200', batN:2},
   hyb:{basis:'night', outageH:4, backupKW:''}, off:{autonomy:1}, gt:{offset:100}, hybOffset:100,
   hist:{months:monthsBack().map(l=>({label:l,kwh:'',bill:''})), peakKW:'', motorHP:'', motorInv:'yes', useBillRate:'yes'},
   sched:{voltage:230, demand:0.75, loads:[]},
@@ -611,6 +696,87 @@ function stringDesign(inv, panel, panelsPerInv){
   while(left>0){ for(let i=0;i<perMppt.length&&left>0;i++){ if(perMppt[i]<slots[i]){perMppt[i]++;left--;} } }
   return Object.assign(res,{strings:best.s, series:best.n, panels:best.p, perMppt,
     stringVoc: best.n*vocCold, stringVmpHot: best.n*vmpHot, stringVmpCold: best.n*vmpCold});
+}
+
+/* Exact string layout for a fixed panel count (custom setups): strings on one MPPT share a length,
+   different MPPTs may use different lengths. */
+function stringDesignExact(inv, panel, P){
+  const set=S.set; const tMin=num(set.tMin,10), tHot=num(set.tCellMax,70);
+  const vocCold = panel.voc*(1+panel.tVoc/100*(tMin-25)), vmpHot=panel.vmp*(1+panel.tVoc/100*(tHot-25)), vmpCold=panel.vmp*(1+panel.tVoc/100*(tMin-25));
+  const nMax=Math.floor(inv.vdcMax/vocCold), nMin=Math.ceil(Math.max(inv.mpptMin,inv.startV)/vmpHot);
+  const slots=inv.mppt.map(iMax=>Math.min(2,Math.max(1,Math.floor(iMax/panel.imp+1e-9)))), clip=inv.mppt.some(iMax=>iMax<panel.imp);
+  const res={vocCold,vmpHot,vmpCold,nMin,nMax,slots,clip,maxPanels:Math.floor(inv.maxPV/panel.wp)};
+  if(nMin>nMax){ res.error='No valid string length for '+inv.model+' with this panel (needs '+nMin+'–'+nMax+' in series).'; return res; }
+  const opts=slots.map(k=>{ const o=[{c:0,L:0}]; for(let c=1;c<=k;c++) for(let L=nMin;L<=nMax;L++) o.push({c,L}); return o; });
+  let best=null;
+  const score=cfg=>{ const used=cfg.filter(x=>x.c>0), Ls=used.map(x=>x.L); const tot=cfg.reduce((a,x)=>a+x.c*x.L,0);
+    return [tot, -cfg.reduce((a,x)=>a+x.c,0), -(Math.max(...Ls)-Math.min(...Ls))]; };
+  const better=(a,b)=>{ for(let i=0;i<a.length;i++){ if(a[i]!==b[i]) return a[i]>b[i]; } return false; };
+  (function dfs(i,cfg,sum){ if(sum>P) return; if(i===opts.length){ if(sum>0){ const sc=score(cfg); if(!best||better(sc,best.sc)) best={cfg:cfg.slice(),sc}; } return; }
+    for(const o of opts[i]){ cfg.push(o); dfs(i+1,cfg,sum+o.c*o.L); cfg.pop(); } })(0,[],0);
+  if(!best){ res.error='Not enough panels for even one string on '+inv.model+' (minimum '+nMin+' in series).'; return res; }
+  const cfg=best.cfg, perMppt=cfg.map(x=>x.c), mpptLen=cfg.map(x=>x.L), strLens=[]; cfg.forEach(x=>{ for(let k=0;k<x.c;k++) strLens.push(x.L); });
+  const Lmax=Math.max(...strLens), Lmin=Math.min(...strLens);
+  return Object.assign(res,{strings:strLens.length, series:Lmax, panels:strLens.reduce((a,b)=>a+b,0), perMppt, mpptLen, strLens,
+    uneven:Lmax!==Lmin, stringVoc:Lmax*vocCold, stringVmpHot:Lmin*vmpHot, stringVmpCold:Lmax*vmpCold});
+}
+const strList = sd => sd.strLens || Array(sd.strings).fill(sd.series);
+
+function calculateCustom(){
+  const set=S.set, C=S.custom, R={warnings:[], notes:[], custom:true};
+  const L=analyzeLoad(); if(L.error) return {error:L.error};
+  R.load=L; R.warnings.push(...L.warnings);
+  R.rate = (S.method==='history' && S.hist.useBillRate==='yes' && L.billRate) ? L.billRate : num(set.rate,15.55);
+  R.rateFromBill = R.rate!==num(set.rate,15.55);
+  const inv=CATALOG.inverters.find(i=>i.id===C.inv); if(!inv) return {error:'Choose an inverter in Custom setup.'};
+  let panel=CATALOG.panels.find(p=>p.id===C.panel); if(!panel) return {error:'Choose a solar panel in Custom setup.'};
+  if(panel.id==='CUSTOM'){ const sv=set.panel; set.panel='CUSTOM'; panel=getPanel(); set.panel=sv; }
+  const invN=Math.max(1,Math.round(num(C.invN,1))), nP=Math.max(1,Math.round(num(C.panels,1)));
+  const sys = inv.type==='gridtie' ? 'gridtie' : (inv.alsoOffgrid && (C.sys==='offgrid'||C.sys==='hybrid') ? C.sys : inv.type);
+  R.sys=sys; R.panel=panel; R.inv=inv; R.invN=invN;
+  const dod=num(set.dod,90)/100, eff=num(set.eff,95)/100, margin=1+num(set.invMargin,15)/100;
+  // PV split per inverter
+  const per=Math.floor(nP/invN), extra=nP-per*invN;
+  if(per<1) return {error:'Fewer panels than inverters.'};
+  const sd=stringDesignExact(inv, panel, per); R.sd=sd;
+  if(sd.error){ R.error=sd.error; return R; }
+  R.panels=sd.panels*invN; R.kWp=R.panels*panel.wp/1000;
+  const unused=nP-R.panels;
+  if(unused>0) R.warnings.push(unused+' of the '+nP+' panels can\'t be wired into valid strings'+(extra?' (the count isn\'t a multiple of '+invN+' inverters)':'')+'. The proposal uses '+R.panels+' panels; change the quantity to use them all.');
+  if(sd.uneven) R.notes.push('Strings have different lengths ('+[...new Set(sd.strLens)].join(' and ')+' panels). That is fine as long as each length stays on its own MPPT, as shown below.');
+  if(sd.panels*panel.wp > inv.maxPV) R.warnings.push('Each inverter gets '+r2(sd.panels*panel.wp/1000)+' kWp, above the '+inv.model+' maximum of '+r2(inv.maxPV/1000)+' kWp. Reduce panels or add an inverter.');
+  if(sd.clip) R.warnings.push('Panel Imp ('+panel.imp+' A) exceeds the inverter\'s MPPT current limit; the inverter will current-limit (small clipping loss, no damage).');
+  if(invN>inv.parallel) R.warnings.push(inv.model+' supports up to '+inv.parallel+' units in parallel; you chose '+invN+'.');
+  // load vs inverter
+  let needKW=0, surgeKW=0;
+  if(sys==='gridtie'){ needKW=R.kWp/1.35; if(invN*inv.kw<needKW*0.85) R.warnings.push('Inverter capacity ('+r1(invN*inv.kw)+' kW) is small for '+r2(R.kWp)+' kWp; expect clipping at midday.'); }
+  else { needKW=(sys==='hybrid'?L.backupPeakKW:L.peakKW)*margin; surgeKW=sys==='hybrid'?(L.backupSurgeKW||L.surgeKW):L.surgeKW;
+    if(invN*inv.kw<needKW) R.warnings.push('Inverter capacity ('+r1(invN*inv.kw)+' kW) is below the estimated '+(sys==='hybrid'?'backed-up ':'')+'peak load with margin ('+r1(needKW)+' kW).');
+    if(inv.surge<=1.0 && surgeKW>invN*inv.kw) R.warnings.push('Motor starting surge (~'+r1(surgeKW)+' kW) is above the inverter rating. Confirm the overload rating or use inverter-type motors.'); }
+  R.needKW=needKW; R.surgeKW=surgeKW;
+  if(invN>1 && sys!=='gridtie') R.notes.push(invN+' inverters run in parallel on one 230 V output. Use Growatt parallel cables, keep AC cables the same length, and share one common battery bank.');
+  if(invN>1 && sys==='gridtie') R.notes.push(invN+' grid-tie inverters each feed their own breaker on the main panel.');
+  // batteries
+  const b=CATALOG.batteries.find(x=>x.id===C.bat), nb=Math.max(0,Math.round(num(C.batN,0)));
+  if(sys==='gridtie'){ if(b&&nb>0) R.warnings.push('A grid-tie inverter can\'t charge batteries, so the batteries were left out. Choose a hybrid inverter to include them.'); }
+  else if(!b||nb===0){ R.warnings.push(sys==='offgrid'?'An off-grid system needs batteries. Add batteries to this setup.':'No batteries chosen, so there is no backup during outages.'); }
+  else {
+    let usable;
+    if(sys==='offgrid') usable=L.daily*num(S.off.autonomy,1);
+    else if(S.hyb.basis==='night') usable=L.backupNight;
+    else { const bkw=num(S.hyb.backupKW)>0?num(S.hyb.backupKW):L.backupPeakKW*0.5; usable=bkw*num(S.hyb.outageH,4); R.backupKWused=bkw; }
+    usable=Math.max(usable,2);
+    const demandA=invN*inv.kw*1000/(48*0.95);
+    R.bat={b, n:nb, kwh:nb*b.kwh, byE:0, byI:0}; R.batUsable=R.bat.kwh*dod; R.batUsableReq=usable; R.batDemandA=demandA;
+    if(R.batUsable<usable*0.95) R.warnings.push('Battery bank gives '+r1(R.batUsable)+' kWh usable; the design target is '+r1(usable)+' kWh. Backup time will be shorter.');
+    if(nb*b.maxI<demandA) R.warnings.push(nb+' × '+b.maxI+' A batteries can\'t supply the inverter\'s full '+Math.round(demandA)+' A. Add batteries or limit the discharge current in the inverter settings.');
+    if(nb>b.parallel) R.warnings.push(nb+' batteries is more than the '+b.parallel+'-unit parallel limit.');
+  }
+  R.bos=bos(R, panel, sd, {inv, n:invN});
+  R.fin=finance(R, L, panel);
+  if(R.fin.breakdown.marketPos!=='within') R.warnings.push('Price is '+R.fin.breakdown.marketPos+' the typical market range ('+peso(R.fin.breakdown.perKWp)+'/kWp).');
+  if(R.fin.breakdown.missing.length) R.warnings.push('No price set for '+R.fin.breakdown.missing.join(', ')+'. Set it in the Equipment catalog.');
+  return R;
 }
 
 function chooseBattery(nomKWh, demandA){
@@ -805,6 +971,7 @@ function finance(R, L, panel){
     B.cost=cl.reduce((a,l)=>a+l[1],0);
     const pctProfit=B.cost*num(set.marginPct,25)/100, minP=num(set.minProfit,0);
     B.profit=Math.max(pctProfit,minP); B.profitRule=pctProfit>=minP?(num(set.marginPct,25)+'% margin'):'minimum profit';
+    B.labor=days*num(set.crewPerDay,6000); B.materials=B.cost-B.labor;
     B.costLines=cl; B.lines=cl.slice(); B.lines.push(['Profit ('+B.profitRule+')', B.profit]);
     B.isCost=true;
   } else if(set.priceMode==='flat'){
@@ -849,7 +1016,12 @@ function init(){
   document.querySelectorAll('#segMethod button').forEach(b=>b.onclick=()=>{S.method=b.dataset.v; save(); renderMethod();});
   document.getElementById('btnAddLoad').onclick=()=>{ S.sched.loads.push(newLoad(document.getElementById('addCat').value)); save(); renderLoads(); };
   document.getElementById('btnPresetLoads').onclick=()=>{ if(S.sched.loads.length && !confirmInline()) return; S.sched.loads=presetLoads(); save(); renderLoads(); };
-  document.getElementById('btnCalc').onclick=runCalc;
+  document.getElementById('btnCalc').onclick=()=>{ S.mode='auto'; save(); runCalc(); };
+  document.getElementById('btnCustomCalc').onclick=()=>{ readCustom(); S.mode='custom'; save(); if(!S.client.email){ document.getElementById('cuNote').innerHTML='<span style="color:var(--err)">Fill in the client (with email) and consumption on Project &amp; loads first.</span>'; showTab('input'); runCalc(); return; } runCalc(); };
+  document.getElementById('btnCustomFromAuto').onclick=()=>{ const keep=S.mode; S.mode='auto'; const R=calculate(); S.mode=keep;
+    if(R.error&&!R.inv){ document.getElementById('cuNote').textContent='Fill in Project & loads first so there is a recommendation to start from.'; return; }
+    Object.assign(S.custom,{sys:R.sys==='gridtie'?'':R.sys, inv:R.inv.id, invN:R.invN, panel:R.panel.id, panels:R.panels, bat:R.bat?R.bat.b.id:'', batN:R.bat?R.bat.n:0}); save(); renderCustom();
+    document.getElementById('cuNote').textContent='Loaded the current recommendation. Change anything, then build the proposal.'; };
   document.getElementById('btnNew').onclick=newProposal;
   document.getElementById('btnNewProp').onclick=newProposal;
   document.getElementById('propSearch').oninput=renderProposalList;
@@ -863,6 +1035,22 @@ function fillEquipSelects(){
   const sb=document.getElementById('selBattery'); sb.innerHTML='<option value="auto">Auto (prefer Ubetter)</option>'+CATALOG.batteries.filter(isAvail).map(p=>`<option value="${p.id}">${esc(p.brand+' '+p.model)}</option>`).join('');
   const si=document.getElementById('selInverter'); si.innerHTML='<option value="auto">Auto (best fit per system type)</option>'+CATALOG.inverters.filter(isAvail).map(p=>`<option value="${p.id}">${esc(p.brand+' '+p.model)} (${CAT_LABEL[p.type]})</option>`).join('');
   [['selPanel','set.panel'],['selBattery','set.battery'],['selInverter','set.inverter']].forEach(([id,k])=>{ const el=document.getElementById(id), v=getK(k); if([...el.options].some(o=>o.value===v)) el.value=v; else { el.selectedIndex=0; setK(k, el.value); } });
+}
+function readCustom(){ const C=S.custom; C.inv=document.getElementById('cuInv').value; C.invN=num(document.getElementById('cuInvN').value,1);
+  C.panel=document.getElementById('cuPanel').value; C.panels=num(document.getElementById('cuPanels').value,1);
+  C.bat=document.getElementById('cuBat').value; C.batN=num(document.getElementById('cuBatN').value,0); C.sys=document.getElementById('cuSys').value; }
+function renderCustom(){
+  const C=S.custom, opt=(arr,v,label)=>arr.filter(x=>isAvail(x)||x.id===v).map(x=>`<option value="${x.id}" ${x.id===v?'selected':''}>${esc(label(x))}</option>`).join('');
+  document.getElementById('cuInv').innerHTML=['hybrid','offgrid','gridtie'].map(t=>`<optgroup label="${CAT_LABEL[t]}">${opt(CATALOG.inverters.filter(i=>i.type===t),C.inv,i=>i.brand+' '+i.model+' — '+i.kw+' kW')}</optgroup>`).join('');
+  document.getElementById('cuPanel').innerHTML=opt(CATALOG.panels,C.panel,p=>p.brand+' '+p.model.replace(/\s*\(.*\)/,'')+' — '+(p.id==='CUSTOM'?num(S.set.custom.wp):p.wp)+' W');
+  document.getElementById('cuBat').innerHTML='<option value="">None</option>'+opt(CATALOG.batteries,C.bat,b=>b.brand+' '+b.kwh+' kWh ('+b.model.replace(/^[\d.]+V\s*/,'')+')');
+  document.getElementById('cuInvN').value=C.invN; document.getElementById('cuPanels').value=C.panels; document.getElementById('cuBatN').value=C.batN; document.getElementById('cuSys').value=C.sys||'hybrid';
+  const upd=()=>{ readCustom(); save(); const inv=CATALOG.inverters.find(i=>i.id===C.inv), p=CATALOG.panels.find(x=>x.id===C.panel), b=CATALOG.batteries.find(x=>x.id===C.bat);
+    document.getElementById('cuSysWrap').classList.toggle('hidden', !(inv&&inv.alsoOffgrid));
+    const wp=p?(p.id==='CUSTOM'?num(S.set.custom.wp):p.wp):0, kwp=r2(num(C.panels)*wp/1000);
+    document.getElementById('cuSum').innerHTML=inv&&p?`<div><b>${kwp} kWp</b><span>solar</span></div><div><b>${r1(num(C.invN)*inv.kw)} kW</b><span>${CAT_LABEL[inv.type==='gridtie'?'gridtie':(inv.alsoOffgrid?C.sys||'hybrid':inv.type)]} inverter${num(C.invN)>1?'s':''}</span></div><div><b>${b&&num(C.batN)>0&&inv.type!=='gridtie'?r2(num(C.batN)*b.kwh)+' kWh':'—'}</b><span>battery</span></div><div><b>${inv?r1(kwp/(num(C.invN)*inv.maxPV/1000)*100):0}%</b><span>of max PV input</span></div>`:''; };
+  ['cuInv','cuInvN','cuPanel','cuPanels','cuBat','cuBatN','cuSys'].forEach(id=>{ const el=document.getElementById(id); el.oninput=el.onchange=upd; });
+  upd();
 }
 function fillUtilities(){
   const sel=document.getElementById('selUtil'); sel.innerHTML=UTILITIES.map(u=>`<option value="${u.id}">${u.name}${u.rate?` — ₱${u.rate.toFixed(2)}/kWh`:''}</option>`).join('');
@@ -885,7 +1073,7 @@ async function toggleFullscreen(){
   if(!w) flash('Allow pop-ups for this site, or open '+TOOL_URL+' directly.');
 }
 function showTab(t){ document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
-  ['proposals','input','results','settings','catalog'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t)); window.scrollTo(0,0); }
+  ['proposals','input','custom','results','settings','catalog'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t)); window.scrollTo(0,0); }
 function bindInputs(root){
   root.querySelectorAll('[data-k]').forEach(el=>{
     const v=getK(el.dataset.k); if(v!==undefined && v!==null) el.value=v;
@@ -893,7 +1081,7 @@ function bindInputs(root){
       if(el.dataset.k==='set.panel') renderCustomPanel(); };
   });
 }
-function renderAll(){ const pmSel=document.getElementById('selPriceMode'); if(pmSel){ const f=()=>{ const m=S.set.priceMode||'cost'; document.querySelectorAll('.pm-item').forEach(e=>e.style.display=m==='itemized'?'':'none'); document.querySelectorAll('.pm-flat').forEach(e=>e.style.display=m==='flat'?'':'none'); document.querySelectorAll('.pm-cost').forEach(e=>e.style.display=m==='cost'?'':'none'); }; pmSel.addEventListener('change',f); f(); } const ms=document.getElementById('mailStatus'); if(ms) ms.innerHTML=(S.set.webhook||store.sget('exoid_mail'))?'✅ Automatic mailer is active on this device.':'Automatic mailer not configured.'; bindInputs(document); renderSys(); renderMethod(); renderHist(); renderLoads(); renderCustomPanel(); renderCatalog(); }
+function renderAll(){ try{ renderCustom(); }catch(e){} const pmSel=document.getElementById('selPriceMode'); if(pmSel){ const f=()=>{ const m=S.set.priceMode||'cost'; document.querySelectorAll('.pm-item').forEach(e=>e.style.display=m==='itemized'?'':'none'); document.querySelectorAll('.pm-flat').forEach(e=>e.style.display=m==='flat'?'':'none'); document.querySelectorAll('.pm-cost').forEach(e=>e.style.display=m==='cost'?'':'none'); }; pmSel.addEventListener('change',f); f(); } const ms=document.getElementById('mailStatus'); if(ms) ms.innerHTML=(S.set.webhook||store.sget('exoid_mail'))?'✅ Automatic mailer is active on this device.':'Automatic mailer not configured.'; bindInputs(document); renderSys(); renderMethod(); renderHist(); renderLoads(); renderCustomPanel(); renderCatalog(); }
 function renderSys(){
   document.querySelectorAll('#segSys button').forEach(b=>b.classList.toggle('on',b.dataset.v===S.sys));
   const hint={hybrid:'Grid-connected with battery backup. Solar runs the house in the day, charges the battery, and can export to the grid if net metering is on. During an outage the battery carries the <b>backed-up</b> loads. Inverter: Growatt SPM or SPE series.',
@@ -962,7 +1150,7 @@ function renderCustomPanel(){ const c=document.getElementById('customPanel');
   c.innerHTML=[['wp','Pmax (W)'],['voc','Voc (V)'],['vmp','Vmp (V)'],['isc','Isc (A)'],['imp','Imp (A)'],['tVoc','Temp. coeff. Voc (%/°C)']].map(([k,l])=>`<div><label>${l}</label><input type="number" step="0.01" data-k="set.custom.${k}"></div>`).join('');
   bindInputs(c); }
 function renderCatalog(){
-  const btns=(x,kind)=>`<td class="catbtns"><button class="btn sec sm" data-edit="${x.id}" data-kind="${kind}">Edit</button>
+  const btns=(x,kind)=>`<td class="pricecell"><label>${S.set.priceMode==='itemized'?'Selling price':'Cost price'} (₱)</label><input type="number" min="0" step="100" class="pin" data-pid="${x.id}" data-pk="${S.set.priceMode==='itemized'?'price':'cost'}" value="${(S.set.priceMode==='itemized'?x.price:x.cost)??''}" placeholder="set price"></td><td class="catbtns"><button class="btn sec sm" data-edit="${x.id}" data-kind="${kind}">Edit</button>
       <button class="btn ghost sm" data-avail="${x.id}">${isAvail(x)?'Mark unavailable':'Mark available'}</button>
       ${x.builtin? (CAT_EDITS.over[x.id]?`<button class="btn ghost sm" data-reset="${x.id}">Reset</button>`:'') : `<button class="btn ghost sm" data-del="${x.id}">Delete</button>`}</td>`;
   const row=(x,kind,specs)=>`<tr class="${isAvail(x)?'':'catrow-off'}"><td><div class="imgslot">${x.img?`<img src="${x.img}" alt="">`:'photo<br>slot'}</div></td><td><b>${esc(x.brand)} ${esc(x.model)}</b> ${x.builtin?'':'<span class="pill">added</span>'} ${!isAvail(x)?'<span class="pill">unavailable</span>':''} ${x.verify?'<span class="pill v">verify</span>':''}<div class="small">${specs}</div>${x.verify?`<div class="small" style="color:var(--warn)">${esc(x.verify)}</div>`:''}${x.url?`<div class="small"><a href="${esc(x.url)}" target="_blank" rel="noopener">Datasheet</a></div>`:''}</td>${btns(x,kind)}</tr>`;
@@ -978,6 +1166,8 @@ function renderCatalog(){
   v.querySelectorAll('[data-avail]').forEach(b=>b.onclick=()=>{ const x=findCat(b.dataset.avail); catChange(e=>{ e.over[x.id]=Object.assign({},e.over[x.id]||{},{available:!isAvail(x)}); }); });
   v.querySelectorAll('[data-reset]').forEach(b=>b.onclick=()=>catChange(e=>{ delete e.over[b.dataset.reset]; }));
   v.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>catChange(e=>{ e.added=e.added.filter(a=>a.id!==b.dataset.del); delete e.over[b.dataset.del]; }));
+  v.querySelectorAll('.pin').forEach(inp=>inp.onchange=()=>{ const id=inp.dataset.pid, k=inp.dataset.pk, val=inp.value===''?undefined:parseFloat(inp.value), x=findCat(id);
+    catChange(e=>{ if(x.builtin){ e.over[id]=Object.assign({},e.over[id]||{},{[k]:val}); } else { const a=e.added.find(a=>a.id===id); if(a) a[k]=val; } }); });
 }
 function findCat(id){ for(const k of ['inverters','batteries','panels']){ const x=CATALOG[k].find(i=>i.id===id); if(x) return x; } return null; }
 let CAT_SHARED=null; // true = synced with the shared file, false = this device only
@@ -990,7 +1180,7 @@ async function loadSharedCatalog(){
   }catch(e){ CAT_SHARED=false; }
   const st=document.getElementById('catStatus'); if(st) st.textContent=catStatusText();
 }
-function applyCatalog(persist){ CATALOG=buildCatalog(); try{ localStorage.setItem('exoid_catalog_edits', JSON.stringify(CAT_EDITS)); }catch(e){} fillEquipSelects(); renderCatalog(); }
+function applyCatalog(persist){ CATALOG=buildCatalog(); try{ renderCustom(); }catch(e){} try{ localStorage.setItem('exoid_catalog_edits', JSON.stringify(CAT_EDITS)); }catch(e){} fillEquipSelects(); renderCatalog(); }
 async function catChange(mutator){
   // re-read the shared copy first so two installers editing don't overwrite each other
   const u=mailerURL();
@@ -1061,7 +1251,7 @@ function runCalc(){
   const note=document.getElementById('calcNote');
   if(!S.client.email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(S.client.email)){ note.innerHTML='<span style="color:var(--err)">Client email is required (quotes are sent there).</span>'; document.getElementById('cEmail').focus(); return; }
   note.textContent='';
-  const R=calculate(); LAST=R;
+  const R=(S.mode==='custom'?calculateCustom():calculate()); LAST=R;
   document.getElementById('resultsEmpty').classList.add('hidden');
   const box=document.getElementById('results'); box.classList.remove('hidden');
   if(R.error && !R.inv){ box.innerHTML=`<div class="errbox">${R.error}</div>`; showTab('results'); return; }
@@ -1087,9 +1277,10 @@ function renderResults(R){
   if(R.bat) eq.push({img:R.bat.b.img,item:'Battery (LiFePO4)', model:`${R.bat.b.brand} ${R.bat.b.model}`, spec:`${R.bat.b.kwh} kWh each · ${R.bat.b.v} V · total ${r2(R.bat.kwh)} kWh (${r1(R.batUsable)} kWh usable)`, qty:R.bat.n, url:R.bat.b.url});
   const eqRows=eq.map(e=>`<tr><td><div class="imgslot">${e.img?`<img src="${e.img}" alt="">`:'photo'}</div></td><td><b>${e.item}</b><div>${e.model}</div><div class="small">${e.spec}</div></td><td class="num" style="font-size:18px;font-weight:700">${e.qty}</td><td class="noprint">${e.url?`<a href="${e.url}" target="_blank" rel="noopener">Datasheet</a>`:''}</td></tr>`).join('');
   // configuration text
-  const mpptTxt = sd.perMppt.map((c,i)=>c?`MPPT ${i+1}: ${c} string${c>1?'s':''} × ${sd.series} panels`:`MPPT ${i+1}: unused`).join(' · ');
+  const mpptTxt = sd.perMppt.map((c,i)=>c?`MPPT ${i+1}: ${c} string${c>1?'s':''} × ${sd.mpptLen?sd.mpptLen[i]:sd.series} panels`:`MPPT ${i+1}: unused`).join(' · ');
+  const strDesc = sd.uneven ? `${sd.strings} strings (${strList(sd).join(' + ')} panels) <b>in series</b>` : `${sd.strings} string${sd.strings>1?'s':''} × ${sd.series} panels <b>in series</b>`;
   const cfg = `<ul style="margin:6px 0 0 18px;padding:0">
-    <li><b>PV array:</b> ${R.panels} panels = ${R.invN>1?R.invN+' inverters × ':''}${sd.strings} string${sd.strings>1?'s':''} × ${sd.series} panels <b>in series</b>${sd.strings>1?' (strings on separate MPPTs'+(Math.max(...sd.perMppt)>1?', or paralleled where 2 share one MPPT':'')+')':''}. ${R.invN>1?'Per inverter — ':''}${mpptTxt}.</li>
+    <li><b>PV array:</b> ${R.panels} panels = ${R.invN>1?R.invN+' inverters × ':''}${strDesc}${sd.strings>1?' (strings on separate MPPTs'+(Math.max(...sd.perMppt)>1?', or paralleled where 2 share one MPPT':'')+')':''}. ${R.invN>1?'Per inverter — ':''}${mpptTxt}.</li>
     <li class="tech"><b>String voltage:</b> Voc at ${set.tMin}°C = ${Math.round(sd.stringVoc)} V (limit ${inv.vdcMax} V) · Vmp hot = ${Math.round(sd.stringVmpHot)} V, Vmp cold = ${Math.round(sd.stringVmpCold)} V (MPPT window ${inv.mpptMin}–${inv.mpptMax} V) · allowed string length ${sd.nMin}–${sd.nMax} panels.</li>
     <li><b>Inverter${R.invN>1?'s':''}:</b> ${R.invN} × ${inv.model}${R.invN>1?(R.sys==='gridtie'?' — independent, each on its own AC breaker':' — <b>in parallel</b> (same phase, parallel comm. cables)'):''}; total ${r1(R.invN*inv.kw)} kW continuous${inv.surge>1?', '+r1(R.invN*inv.kw*inv.surge)+' kVA surge':''}.</li>
     ${R.bat?`<li><b>Battery bank:</b> ${R.bat.n} × ${R.bat.b.kwh} kWh, all <b>in parallel</b> at 51.2 V nominal (48 V system). <b>Never connect these batteries in series.</b> ${R.bat.n>1?'Connect through a common busbar, with equal cable lengths.':''} Link the BMS to the inverter with the CAN/RS485 cable.</li>`:''}
@@ -1118,7 +1309,7 @@ function renderResults(R){
       <div><div class="small">Basis of design</div>${S.method==='history'?`Average of ${L.monthsUsed} month(s) of bills: <b>${Math.round(L.monthly)} kWh/month</b>`:`Schedule of loads: <b>${r1(L.daily)} kWh/day</b>, connected ${Math.round(L.connectedW).toLocaleString()} W`}
       <div class="small tech">Peak demand ${r1(L.peakKW)} kW${L.peakEstimated?' (estimated)':''} · motor starting ~${r1(L.surgeKW)} kW · ${Math.round(L.dayShare*100)}% daytime use</div></div></div>
     <h3 style="margin-top:16px">System summary</h3>
-    <div class="kpis">
+    <div class="kpis module">
       <div class="kpi"><div class="v">${r2(R.kWp)} kWp</div><div class="l">Solar capacity (${R.panels} × ${p.wp} W)</div></div>
       <div class="kpi"><div class="v">${r1(R.invN*inv.kw)} kW</div><div class="l">Inverter (${R.invN} × ${inv.model})</div></div>
       <div class="kpi"><div class="v">${R.bat?r2(R.bat.kwh)+' kWh':'—'}</div><div class="l">${R.bat?`Battery (${R.bat.n} × ${R.bat.b.kwh} kWh, ${r1(R.batUsable)} kWh usable)`:'No battery (grid-tie)'}</div></div>
@@ -1127,7 +1318,7 @@ function renderResults(R){
       ${R.sys!=='gridtie'?`<div class="kpi"><div class="v">${Math.round(f.solarFraction*100)}%</div><div class="l">Self-supplied (solar + battery, no grid)</div></div>`:''}
     </div>
 
-    <h3 style="margin-top:18px">Recommended equipment</h3>
+    <h3 style="margin-top:18px">${R.custom?'Selected equipment':'Recommended equipment'}</h3>
     <table><thead><tr><th style="width:66px"></th><th>Item</th><th class="num">Qty</th><th class="noprint"></th></tr></thead><tbody>${eqRows}</tbody></table>
 
     <h3 style="margin-top:18px">Investment &amp; savings</h3>
@@ -1140,11 +1331,12 @@ function renderResults(R){
     </div>
     <div class="tech" style="margin-top:10px"><table><thead><tr><th>Price breakdown (installer view)</th><th class="num">Amount</th></tr></thead><tbody>
       ${f.breakdown.isCost ? f.breakdown.costLines.map(l=>`<tr><td>${esc(l[0])}</td><td class="num">${peso(l[1])}</td></tr>`).join('')
-          +`<tr><td><b>Total cost</b></td><td class="num"><b>${peso(f.breakdown.cost)}</b></td></tr>`
-          +`<tr style="background:#eef8f3"><td><b>Profit</b> (${esc(f.breakdown.profitRule)}) — ${Math.round(f.breakdown.profit/(f.price-f.nmFee)*100)}% of selling price</td><td class="num"><b>${peso(f.breakdown.profit)}</b></td></tr>`
-          +(f.nmFee?`<tr><td>Net-metering application</td><td class="num">${peso(f.nmFee)}</td></tr>`:'')
+          +`<tr class="sub"><td>Total Materials Cost <span class="small">(equipment, materials, transport &amp; permits)</span></td><td class="num">${peso(f.breakdown.materials)}</td></tr>`
+          +`<tr class="sub"><td>Total Labor Cost <span class="small">(${f.breakdown.days} crew days)</span></td><td class="num">${peso(f.breakdown.labor)}</td></tr>`
+          +`<tr class="sub profit"><td>Contractor Profit <span class="small">(${esc(f.breakdown.profitRule)}, ${Math.round(f.breakdown.profit/(f.price-f.nmFee)*100)}% of price)</span></td><td class="num">${peso(f.breakdown.profit)}</td></tr>`
+          +(f.nmFee?`<tr class="sub"><td>Net-metering application</td><td class="num">${peso(f.nmFee)}</td></tr>`:'')
         : f.breakdown.lines.map(l=>`<tr><td>${esc(l[0])}</td><td class="num">${peso(l[1])}</td></tr>`).join('')}
-      <tr><td><b>Selling price</b></td><td class="num"><b>${peso(f.price)}</b></td></tr></tbody></table>
+      <tr class="grand"><td>${f.breakdown.isCost?'Total Cost (selling price)':'Selling price'}</td><td class="num">${peso(f.price)}</td></tr></tbody></table>
       <div class="${f.breakdown.marketPos==='within'?'okbox':'warnbox'}">Market check: ${peso(f.breakdown.perKWp)}/kWp is <b>${f.breakdown.marketPos}</b> the typical ${CAT_LABEL[R.sys].toLowerCase()} range of ${peso(f.breakdown.market[0])}–${peso(f.breakdown.market[1])}/kWp${f.breakdown.marketPos==='above'?': expect price pushback; consider a lower margin or fewer batteries.':f.breakdown.marketPos==='below'?': you may be leaving money on the table.':'.'}</div>
       ${f.breakdown.missing.length?`<div class="errbox">No selling price set for: ${f.breakdown.missing.map(esc).join(', ')}. Add it in Equipment catalog → Edit, or the total is too low.</div>`:''}</div>
     <div class="pricenote">⚠ Estimated price only, final price after full inspection.</div>
@@ -1197,7 +1389,7 @@ function diagram(R){
     // strings
     const sCount=sd.strings; const sh=Math.min(26, (rowH-20)/sCount);
     for(let s=0;s<sCount;s++){ const yy=y+6+s*(sh+4);
-      g+=`<rect x="20" y="${yy}" width="150" height="${sh}" rx="4" fill="#fff7dc" stroke="#d9a300"/><text x="95" y="${yy+sh/2+4}" font-size="10.5" text-anchor="middle">String ${s+1}: ${sd.series} × ${R.panel.wp} W</text>`;
+      g+=`<rect x="20" y="${yy}" width="150" height="${sh}" rx="4" fill="#fff7dc" stroke="#d9a300"/><text x="95" y="${yy+sh/2+4}" font-size="10.5" text-anchor="middle">String ${s+1}: ${strList(sd)[s]} × ${R.panel.wp} W</text>`;
       g+=line(170,yy+sh/2,230,y+rowH/2-20,'#d9a300'); }
     g+=box(230,y+rowH/2-45,140,50,'DC box','isolator + SPD'+(Math.max(...sd.perMppt)>1?' + fuses':''),'#f4f7fb');
     g+=line(370,y+rowH/2-20,invX,y+rowH/2-20,'#d9a300');
@@ -1271,7 +1463,7 @@ function quoteText(R){
 const DESIGN_SET_KEYS=['priceMode','pvPerKW','marginPct','minProfit','crewPerDay','bosPerKW','bosPerInv','bosPerBat','otherCost','pricePerKW','batAdder','rate','utility','nmFee','exportRate','escal','degr','years','psh','pr','dayShare','invMargin','dod','eff','offOversize','vdPV','tMin','tCellMax','vdAC','wPerHP','panel','battery','inverter','custom'];
 let PROP_LIST=[], PROP_SHARED=null, PROP_DELETE_ARM=null;
 function propSnapshot(){ const set={}; DESIGN_SET_KEYS.forEach(k=>set[k]=S.set[k]);
-  return JSON.parse(JSON.stringify({author:S.author||SESSION_NAME, laborDays:S.laborDays, client:S.client, sys:S.sys, method:S.method, netMeter:S.netMeter, hyb:S.hyb, off:S.off, gt:S.gt, hybOffset:S.hybOffset, hist:S.hist, sched:S.sched, site:S.site, set})); }
+  return JSON.parse(JSON.stringify({author:S.author||SESSION_NAME, laborDays:S.laborDays, mode:S.mode, custom:S.custom, client:S.client, sys:S.sys, method:S.method, netMeter:S.netMeter, hyb:S.hyb, off:S.off, gt:S.gt, hybOffset:S.hybOffset, hist:S.hist, sched:S.sched, site:S.site, set})); }
 function localProps(){ try{ return JSON.parse(localStorage.getItem('exoid_proposals')||'{}'); }catch(e){ return {}; } }
 function setLocalProps(o){ try{ localStorage.setItem('exoid_proposals', JSON.stringify(o)); }catch(e){ flash('This device is out of storage space for proposals.'); } }
 async function apiGet(params){ const u=mailerURL(); if(!u) throw new Error('no mailer'); const q=new URLSearchParams(params).toString(); const r=await fetch(u+(u.includes('?')?'&':'?')+q); const j=await r.json(); if(!j||!j.ok) throw new Error(j&&j.error||'failed'); return j; }
@@ -1284,7 +1476,7 @@ async function saveProposal(R){
   const isNew=!S.pid; if(isNew) S.pid='P'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
   if(!S.author) S.author=SESSION_NAME;
   const meta={id:S.pid, installer:S.author, lastEditedBy:SESSION_NAME, client:S.client.name||'(no name)', clientAddress:S.client.address||'', projectAddress:S.client.site||S.client.address||'',
-    system:CAT_LABEL[R.sys], kWp:r2(R.kWp), price:Math.round(R.fin.price), updated:new Date().toISOString()};
+    system:CAT_LABEL[R.sys]+(R.custom?' (custom)':''), kWp:r2(R.kWp), price:Math.round(R.fin.price), updated:new Date().toISOString()};
   const rec={meta, data:propSnapshot()};
   let shared=false;
   try{ await apiPost({action:'saveProposal', proposal:rec}); shared=true; }catch(e){ shared=false; }
@@ -1309,7 +1501,7 @@ function renderProposalList(){
   tb.innerHTML = rows.map(p=>`<tr><td><b>${esc(p.client)}</b>${p.local?' <span class="pill">this device</span>':''}${p.id===S.pid?' <span class="pill v">open</span>':''}</td><td class="small">${esc(p.projectAddress)}</td><td>${esc(p.system)}</td>
     <td class="num">${p.kWp}</td><td class="num">${peso(p.price)}</td><td class="small">${esc(p.installer)}</td><td class="small">${fmtDate(p.updated)}</td>
     <td class="catbtns"><button class="btn sec sm" data-open="${p.id}">Open</button><button class="btn ghost sm" data-dup="${p.id}">Duplicate</button><button class="btn ghost sm" data-delp="${p.id}" style="${PROP_DELETE_ARM===p.id?'background:#b3261e;color:#fff;border-color:#b3261e':''}">${PROP_DELETE_ARM===p.id?'Confirm delete':'Delete'}</button></td></tr>`).join('')
-    || `<tr><td colspan="8" class="small" style="padding:14px">${PROP_LIST.length?'No proposals match your search.':'No saved proposals yet. Make a proposal, then press 💾 Save proposal on the Recommendation page.'}</td></tr>`;
+    || `<tr><td colspan="8" class="small" style="padding:14px">${PROP_LIST.length?'No proposals match your search.':'No saved proposals yet. Make a proposal, then press 💾 Save proposal on the Proposal page.'}</td></tr>`;
   tb.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openProposal(b.dataset.open,false));
   tb.querySelectorAll('[data-dup]').forEach(b=>b.onclick=()=>openProposal(b.dataset.dup,true));
   tb.querySelectorAll('[data-delp]').forEach(b=>b.onclick=()=>deleteProposal(b.dataset.delp));
@@ -1323,7 +1515,7 @@ async function openProposal(id, duplicate){
   let rec; try{ rec=await fetchProposal(id); }catch(e){ st.textContent='Could not open that proposal. Check your connection and try again.'; return; }
   if(!rec||!rec.data){ st.textContent='That proposal could not be found. It may have been deleted.'; return; }
   const d=rec.data, keepSet=S.set; S=defaultState(); S.set=keepSet;
-  ['client','sys','method','netMeter','laborDays','hyb','off','gt','hybOffset','hist','sched','site'].forEach(k=>{ if(d[k]!==undefined) S[k]=d[k]; });
+  ['client','sys','method','netMeter','laborDays','mode','custom','hyb','off','gt','hybOffset','hist','sched','site'].forEach(k=>{ if(d[k]!==undefined) S[k]=d[k]; });
   S.client=Object.assign(defaultState().client, d.client||{});
   Object.assign(S.set, d.set||{}); S.set.preparedBy=SESSION_NAME||S.set.preparedBy;
   if(duplicate){ S.pid=null; S.savedAt=null; S.author=SESSION_NAME; S.client.name=(S.client.name||'')+' (copy)'; } else { S.pid=rec.meta.id; S.savedAt=rec.meta.updated; S.author=d.author||SESSION_NAME; }
@@ -1353,7 +1545,7 @@ async function makePdf(R){
   const src=document.querySelector('#results .prop'); if(!src) throw new Error('no proposal on screen');
   const CW=700;                                   // content width in CSS px (= 186 mm on A4 with 12 mm margins)
   const el=src.cloneNode(true);
-  el.querySelectorAll('.tech,.noprint,.hideadv').forEach(n=>n.remove());   // client copy: no technical tables
+  el.querySelectorAll('.tech,.noprint,.hideadv').forEach(n=>n.remove()); el.classList.add('pdfmode');   // client copy: no technical tables
   el.style.cssText='width:'+CW+'px;box-sizing:border-box;background:#fff;border:0;padding:0;margin:0;font-size:12.5px';
   el.querySelectorAll('.kpis').forEach(k=>k.style.gridTemplateColumns='repeat(3,1fr)');
   el.querySelectorAll('.head').forEach(h=>{ h.style.flexWrap='nowrap'; h.firstElementChild.style.flex='1 1 auto'; });
@@ -1362,12 +1554,17 @@ async function makePdf(R){
     if(vb.length===4 && vb[2]>0){ const W=CW-20, H=Math.round(W*vb[3]/vb[2]); sv.setAttribute('width',W); sv.setAttribute('height',H); sv.style.width=W+'px'; sv.style.height=H+'px'; sv.style.minWidth='0'; } });
   const host=document.createElement('div'); host.style.cssText='position:absolute;left:-10000px;top:0;width:'+CW+'px;background:#fff';
   host.appendChild(el); document.body.appendChild(host);
-  let canvas, breaks=[], total;
+  let canvas, breaks=[], heads=[], total;
+  el.id='pdfRoot';
   try{
-    const top0=el.getBoundingClientRect().top; total=Math.ceil(Math.max(el.scrollHeight, el.getBoundingClientRect().height))+120; // margin: canvas text can wrap slightly longer than the DOM
-    // safe page-break points = top edge of blocks we don't want to split
-    el.querySelectorAll('h3, .kpis, .kpi, tr, .diagram, li, .pricenote, p, .head, .grid').forEach(n=>{ breaks.push(Math.floor(n.getBoundingClientRect().top-top0)); });
-    canvas=await html2canvas(el,{scale:2, backgroundColor:'#ffffff', useCORS:true, windowWidth:CW, scrollX:0, scrollY:0, width:CW, height:total});
+    const domH=Math.ceil(Math.max(el.scrollHeight, el.getBoundingClientRect().height));
+    // measure safe page-break points inside html2canvas's own cloned layout, so they match the image exactly
+    canvas=await html2canvas(el,{scale:2, backgroundColor:'#ffffff', useCORS:true, windowWidth:CW, scrollX:0, scrollY:0, width:CW, height:domH+400,
+      onclone:(doc)=>{ const r=doc.getElementById('pdfRoot'); if(!r) return; const t0=r.getBoundingClientRect().top;
+        r.querySelectorAll('h3, .kpis, .kpi, tr, .diagram, li, .pricenote, p, .head, .grid').forEach(n=>breaks.push(Math.floor(n.getBoundingClientRect().top-t0)));
+        r.querySelectorAll('h3').forEach(n=>heads.push(Math.floor(n.getBoundingClientRect().top-t0)));
+        total=Math.ceil(r.getBoundingClientRect().height)+16; }});
+    if(!total) total=domH+120;
   } finally { host.remove(); }
   breaks=[...new Set(breaks)].filter(y=>y>0).sort((a,b)=>a-b);
   const { jsPDF } = window.jspdf;
@@ -1377,7 +1574,8 @@ async function makePdf(R){
   const pages=[]; let start=0;
   while(start<total-2){
     let end=start+pageH;
-    if(end<total){ const cand=breaks.filter(y=>y>start+pageH*0.4 && y<=end); if(cand.length) end=cand[cand.length-1]; }
+    if(end<total){ const cand=breaks.filter(y=>y>start+pageH*0.4 && y<=end); if(cand.length) end=cand[cand.length-1];
+      const h=heads.filter(y=>y<end && y>end-70 && y>start+pageH*0.4); if(h.length) end=h[0]; }   // keep a heading with what follows it
     else end=total;
     pages.push([start,end]); start=end;
   }
