@@ -134,6 +134,7 @@ input.qtyin{width:84px;text-align:right;font-size:18px;font-weight:700;padding:4
 .testonly{display:none}
 body.testmode .testonly{display:block}
 body.testmode header.top .title::after{content:"Test mode";margin-left:10px;padding:2px 8px;border-radius:999px;background:#F28C28;color:#1d1205;font-size:11.5px;font-weight:700;vertical-align:middle}
+input.mpin{display:inline-block;width:64px;padding:3px 6px;margin:0 2px;font-weight:700;text-align:right}
 /* catalog */
 #catModal{position:fixed;inset:0;background:rgba(22,33,46,.5);display:flex;align-items:flex-start;justify-content:center;padding:30px 12px;z-index:50;overflow:auto}
 #catModal .box{background:#fff;border-radius:10px;max-width:760px;width:100%;padding:20px;border:1px solid var(--line)}
@@ -202,7 +203,7 @@ body.adv .hideadv{display:none}
     <svg width="26" height="26" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="7" fill="#f2a900"/><g stroke="#f2a900" stroke-width="2.4" stroke-linecap="round"><path d="M17 2v5M17 27v5M2 17h5M27 17h5M6.4 6.4l3.5 3.5M24.1 24.1l3.5 3.5M6.4 27.6l3.5-3.5M24.1 9.9l3.5-3.5"/></g></svg>
     <div class="title">Exoid <span>Solar</span></div>
     <div class="sp"></div>
-    <div class="who"><span id="whoLbl"></span><div style="font-size:10px;opacity:.6">Version 2026-11-18 20:05</div></div>
+    <div class="who"><span id="whoLbl"></span><div style="font-size:10px;opacity:.6">Version 2026-11-18 21:15</div></div>
     <button class="btn ghost sm" id="btnFull" title="Use the whole screen (Esc to exit)">⛶ Full screen</button>
     <button class="btn ghost sm" id="btnAdv" title="Show or hide technical details (wiring, protection, string voltages, installer notes)">⚙ Advanced<span class="cnt hidden" id="advCnt"></span></button>
     <button class="btn ghost sm" id="btnNew">+ New proposal</button>
@@ -316,7 +317,7 @@ body.adv .hideadv{display:none}
         <div><label>Usable roof area (m²) — optional</label><input type="number" min="0" data-k="site.roof" placeholder="no limit"></div>
         <div class="tech"><label>PV cable run, array → inverter (m, one way)</label><input type="number" min="1" data-k="site.pvRun"></div>
         <div class="tech"><label>AC run, inverter → panel board (m)</label><input type="number" min="1" data-k="site.acRun"></div>
-        <div class="tech"><label>Crew days for this job (blank = auto)</label><input type="number" min="1" step="0.5" data-k="laborDays" placeholder="auto"></div>
+        <div><label>Installation type (sets labor rate)</label><select data-k="install"><option value="standard">Standard</option><option value="difficult">Difficult (sloped / high roof, hard access)</option></select></div>
         <div class="tech"><label>Battery cable run (m, one way)</label><input type="number" min="0.5" step="0.5" data-k="site.batRun"></div>
       </div>
     </div>
@@ -357,13 +358,19 @@ body.adv .hideadv{display:none}
   <section id="tab-settings" class="hidden">
     <div class="card">
       <h2>Pricing &amp; ROI</h2>
-      <p class="small pm-cost" style="margin-top:0"><b>Cost + margin:</b> price = equipment cost (panels, inverters, batteries at the <b>cost price</b> in the Equipment catalog) + materials + crew days × crew cost + other costs, then your margin on top (never less than the minimum profit), plus net metering. Crew days are estimated per job and can be overridden on the project page (⚙ Advanced). Built-in cost prices are market estimates; replace them with your supplier prices.</p>
+      <p class="small pm-cost" style="margin-top:0"><b>Cost + margin:</b> price = equipment at <b>cost price</b> (Equipment catalog) plus its markup, + misc. materials (allowances below) plus markup, + labor (inverter kW × the standard or difficult rate chosen on the project page), then the contractor profit margin on top, plus net metering. The margin can also be changed right in a proposal's price breakdown (⚙ Advanced). Built-in cost prices are market estimates; replace them with your supplier prices.</p>
       <p class="small pm-item" style="margin-top:0"><b>Itemized:</b> price = kWp × the rate below (panels, mounting, PV and AC wiring, breakers, SPDs, labor) + each inverter's and battery's selling price from the <b>Equipment catalog</b> + net metering. Set your real selling prices there with <b>Edit</b>; the built-in prices are market estimates.</p>
       <div class="grid g4">
         <div><label>Pricing method</label><select data-k="set.priceMode" id="selPriceMode"><option value="cost">Cost + margin (recommended)</option><option value="itemized">Itemized selling prices</option><option value="flat">Flat ₱ per kWp</option></select></div>
-        <div class="pm-cost"><label>Margin on cost (%)</label><input type="number" data-k="set.marginPct"></div>
-        <div class="pm-cost"><label>Minimum profit per job (₱)</label><input type="number" data-k="set.minProfit"></div>
-        <div class="pm-cost"><label>Crew cost per day (₱, whole team)</label><input type="number" data-k="set.crewPerDay"></div>
+        <div class="pm-cost"><label>Markup on panels (%)</label><input type="number" data-k="set.mkPanel"></div>
+        <div class="pm-cost"><label>Markup on inverters (%)</label><input type="number" data-k="set.mkInv"></div>
+        <div class="pm-cost"><label>Markup per battery up to 6 kWh (₱)</label><input type="number" data-k="set.mkBatSmall"></div>
+        <div class="pm-cost"><label>Markup per battery over 6 kWh (₱)</label><input type="number" data-k="set.mkBatLarge"></div>
+        <div class="pm-cost"><label>Markup on misc. materials (%)</label><input type="number" data-k="set.mkMisc"></div>
+        <div class="pm-cost"><label>Labor, standard (₱ per inverter kW)</label><input type="number" data-k="set.laborStd"></div>
+        <div class="pm-cost"><label>Labor, difficult (₱ per inverter kW)</label><input type="number" data-k="set.laborHard"></div>
+        <div class="pm-cost"><label>Contractor profit margin (%)</label><input type="number" data-k="set.marginPct"></div>
+        <div class="pm-cost"><label>Minimum contractor profit per job (₱, 0 = none)</label><input type="number" data-k="set.minProfit"></div>
         <div class="pm-cost"><label>Materials per kWp (₱: rails, clamps, PV cable, MC4, DC protection, conduit)</label><input type="number" data-k="set.bosPerKW"></div>
         <div class="pm-cost"><label>Materials per inverter (₱: AC breakers, SPD, bypass switch, AC wire)</label><input type="number" data-k="set.bosPerInv"></div>
         <div class="pm-cost"><label>Materials per battery (₱: DC breaker, cables, lugs, busbar share)</label><input type="number" data-k="set.bosPerBat"></div>
@@ -564,7 +571,7 @@ document.getElementById('btnLogout').onclick=()=>{ store.sdel('exoid_auth'); loc
 
 /* ---------------- State ---------------- */
 const DEFAULT_SET = {
-  priceMode:'cost', pvPerKW:38000, marginPct:25, minProfit:90000, crewPerDay:6000, bosPerKW:7000, bosPerInv:15000, bosPerBat:3000, otherCost:10000, pricePerKW:50000, batAdder:0, rate:15.551, utility:'meralco', nmFee:50000, exportRate:7.0, escal:3, degr:0.4, years:25,
+  priceMode:'cost', pvPerKW:38000, marginPct:10, minProfit:0, mkPanel:25, mkInv:15, mkBatSmall:10000, mkBatLarge:15000, mkMisc:15, laborStd:8000, laborHard:10000, crewPerDay:6000, bosPerKW:7000, bosPerInv:15000, bosPerBat:3000, otherCost:10000, pricePerKW:50000, batAdder:0, rate:15.551, utility:'meralco', nmFee:50000, exportRate:7.0, escal:3, degr:0.4, years:25,
   psh:4.5, pr:0.80, dayShare:40, invMargin:15, dod:90, eff:95, offOversize:20, vdPV:2, tMin:10, tCellMax:70, vdAC:3, wPerHP:850,
   panel:'auto', battery:'auto', inverter:'auto', preparedBy:'', ccEmail:'', bccEmail:'mgb@exoidrobotics.com, rjterte@exoidrobotics.com, macoyyy.barroga@gmail.com', webhook:'', sigName:'', sigTitle:'Solar Energy Consultant', sigPhone:'', sigEmail:'mgb@exoidrobotics.com',
   custom:{wp:580, voc:51.5, vmp:42.5, isc:14.3, imp:13.65, tVoc:-0.27}
@@ -573,7 +580,7 @@ function monthsBack(){ const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug',
   for(let i=1;i<=6;i++){ const x=new Date(d.getFullYear(), d.getMonth()-i, 1); out.push(m[x.getMonth()]+' '+x.getFullYear()); } return out; }
 function defaultState(){ return {
   client:{name:'',email:'',phone:'',address:'',site:''}, pid:null, savedAt:null, author:'',
-  sys:'hybrid', method:'history', netMeter:'yes', laborDays:'', mode:'auto', custom:{sys:'', inv:'SPM6000', invN:1, panel:'JK620', panels:12, bat:'UB200', batN:2},
+  sys:'hybrid', method:'history', netMeter:'yes', laborDays:'', install:'standard', mode:'auto', custom:{sys:'', inv:'SPM6000', invN:1, panel:'JK620', panels:12, bat:'UB200', batN:2},
   hyb:{basis:'night', outageH:4, backupKW:'', coverPct:100}, off:{autonomy:1}, gt:{offset:100}, hybOffset:100,
   hist:{months:monthsBack().map(l=>({label:l,kwh:'',bill:''})), peakKW:'', motorHP:'', motorInv:'yes', useBillRate:'yes'},
   sched:{voltage:230, demand:0.75, dfMode:'category', loads:[]},
@@ -586,6 +593,8 @@ try{ const saved=JSON.parse(store.get('exoid_solar_state')||'null'); if(saved){ 
 if(S.set.ccEmail==='mgb@exoidrobotics.com'){ S.set.ccEmail=''; const b=(S.set.bccEmail||''); if(!/mgb@exoidrobotics\.com/i.test(b)) S.set.bccEmail='mgb@exoidrobotics.com'+(b?', '+b:''); }
 // fix: Riego's address is rjterte@ (devices that saved the old rjt@ default are corrected)
 if(/(^|[\s,;])rjt@exoidrobotics\.com/i.test(S.set.bccEmail||'')) S.set.bccEmail=S.set.bccEmail.replace(/(^|[\s,;])rjt@exoidrobotics\.com/ig,'$1rjterte@exoidrobotics.com');
+// v4 pricing: markups carry the equipment profit, so the margin on top starts lower
+if(!S.set._pr4){ S.set.marginPct=10; S.set.minProfit=0; S.set._pr4=1; }
 if(!S.set._pa1){ if(S.set.panel==='JK620') S.set.panel='auto'; S.set._pa1=1; }
 if(!S.set._pm3){ if(S.set.priceMode==='itemized') S.set.priceMode='cost'; S.set._pm3=1; }
 function save(){ store.set('exoid_solar_state', JSON.stringify(S)); }
@@ -1059,20 +1068,22 @@ function finance(R, L, panel){
   if(set.priceMode==='cost' || !set.priceMode){
     const nb=R.bat?R.bat.n:0, pc=num(R.panel.cost,0), ic=num(R.inv.cost,0), bc=R.bat?num(R.bat.b.cost,0):0;
     if(!pc) B.missing.push(R.panel.model+' (cost)'); if(!ic) B.missing.push(R.inv.model+' (cost)'); if(R.bat&&!bc) B.missing.push(R.bat.b.model+' (cost)');
-    const autoDays=Math.max(2, Math.ceil(1 + R.kWp*0.3 + nb*0.3 + R.invN*0.5));
-    const days=num(S.laborDays)>0?num(S.laborDays):autoDays; B.days=days; B.autoDays=!(num(S.laborDays)>0);
-    const cl=[];
-    cl.push([R.panels+' × '+R.panel.brand+' '+R.panel.wp+' W panels @ '+peso(pc), R.panels*pc]);
-    cl.push([R.invN+' × '+R.inv.brand+' '+R.inv.model+' @ '+peso(ic), R.invN*ic]);
-    if(R.bat) cl.push([nb+' × '+R.bat.b.brand+' '+R.bat.b.kwh+' kWh battery @ '+peso(bc), nb*bc]);
-    cl.push(['Materials: '+r2(R.kWp)+' kWp × '+peso(num(set.bosPerKW,7000))+' + '+R.invN+' inverter × '+peso(num(set.bosPerInv,15000))+(nb?' + '+nb+' battery × '+peso(num(set.bosPerBat,3000)):''), R.kWp*num(set.bosPerKW,7000)+R.invN*num(set.bosPerInv,15000)+nb*num(set.bosPerBat,3000)]);
-    cl.push(['Labor: '+days+' crew day'+(days===1?'':'s')+(B.autoDays?' (auto)':'')+' × '+peso(num(set.crewPerDay,6000)), days*num(set.crewPerDay,6000)]);
-    if(num(set.otherCost,0)) cl.push(['Other: transport, permits, misc.', num(set.otherCost,0)]);
-    B.cost=cl.reduce((a,l)=>a+l[1],0);
-    const pctProfit=B.cost*num(set.marginPct,25)/100, minP=num(set.minProfit,0);
-    B.profit=Math.max(pctProfit,minP); B.profitRule=pctProfit>=minP?(num(set.marginPct,25)+'% margin'):'minimum profit';
-    B.labor=days*num(set.crewPerDay,6000); B.materials=B.cost-B.labor;
-    B.costLines=cl; B.lines=cl.slice(); B.lines.push(['Profit ('+B.profitRule+')', B.profit]);
+    const mP=num(set.mkPanel,25)/100, mI=num(set.mkInv,15)/100, mM=num(set.mkMisc,15)/100;
+    const mB=R.bat?(R.bat.b.kwh>6?num(set.mkBatLarge,15000):num(set.mkBatSmall,10000)):0;
+    const cl=[]; let markup=0;
+    const add=(label,cost,mk)=>{ cl.push([label, cost+mk]); markup+=mk; };
+    add(R.panels+' × '+R.panel.brand+' '+R.panel.wp+' W panels @ '+peso(pc)+' + '+Math.round(mP*100)+'% markup', R.panels*pc, R.panels*pc*mP);
+    add(R.invN+' × '+R.inv.brand+' '+R.inv.model+' @ '+peso(ic)+' + '+Math.round(mI*100)+'% markup', R.invN*ic, R.invN*ic*mI);
+    if(R.bat) add(nb+' × '+R.bat.b.brand+' '+R.bat.b.kwh+' kWh battery @ '+peso(bc)+' + '+peso(mB)+' markup each', nb*bc, nb*mB);
+    const misc=R.kWp*num(set.bosPerKW,7000)+R.invN*num(set.bosPerInv,15000)+nb*num(set.bosPerBat,3000)+num(set.otherCost,0);
+    add('Misc. materials (rails, wires, isolators, breakers, SPDs, transport, permits) + '+Math.round(mM*100)+'% markup', misc, misc*mM);
+    const invKW=R.invN*R.inv.kw, hard=S.install==='difficult', rate=hard?num(set.laborHard,10000):num(set.laborStd,8000);
+    B.labor=invKW*rate; cl.push(['Labor: '+r1(invKW)+' inverter kW × '+peso(rate)+(hard?' (difficult installation)':' (standard installation)'), B.labor]);
+    B.materials=cl.slice(0,-1).reduce((a,l)=>a+l[1],0); B.markup=markup;
+    B.cost=B.materials+B.labor;
+    const pctProfit=B.cost*num(set.marginPct,10)/100, minP=num(set.minProfit,0);
+    B.profit=Math.max(pctProfit,minP); B.profitRule=pctProfit>=minP?(num(set.marginPct,10)+'% margin'):'minimum profit';
+    B.costLines=cl; B.lines=cl.slice(); B.lines.push(['Contractor profit ('+B.profitRule+')', B.profit]);
     B.isCost=true;
   } else if(set.priceMode==='flat'){
     B.lines.push(['Solar system (flat '+peso(num(set.pricePerKW,50000))+'/kWp × '+r2(R.kWp)+' kWp)', R.kWp*num(set.pricePerKW,50000)]);
@@ -1361,6 +1372,7 @@ function runCalc(){
   const box=document.getElementById('results'); box.classList.remove('hidden');
   if(R.error && !R.inv){ box.innerHTML=`<div class="errbox">${R.error}</div>`; showTab('results'); return; }
   box.innerHTML=renderResults(R); showTab('results'); updateAdvCount(); wireQtyInputs(R);
+  const mp=box.querySelector('.mpin'); if(mp) mp.onchange=()=>{ S.set.marginPct=Math.max(0,num(mp.value,10)); save(); document.querySelectorAll('[data-k="set.marginPct"]').forEach(i=>i.value=S.set.marginPct); const y=window.scrollY; runCalc(); window.scrollTo(0,y); flash('Margin set to '+S.set.marginPct+'%. Price recalculated.'); };
   document.getElementById('btnPrint').onclick=()=>window.print();
   document.getElementById('btnSaveProp').onclick=()=>saveProposal(R);
   document.getElementById('btnPdf').onclick=async()=>{ try{ flash('Preparing PDF…'); const pdf=await makePdf(R); pdf.save(pdfName(R)); flash('PDF downloaded.'); }catch(e){ flash('Could not create the PDF ('+e.message+'). Use Print → Save as PDF instead.'); } };
@@ -1450,9 +1462,9 @@ function renderResults(R){
     </div>
     <div class="tech" style="margin-top:10px"><table><thead><tr><th>Price breakdown (installer view)</th><th class="num">Amount</th></tr></thead><tbody>
       ${f.breakdown.isCost ? f.breakdown.costLines.map(l=>`<tr><td>${esc(l[0])}</td><td class="num">${peso(l[1])}</td></tr>`).join('')
-          +`<tr class="sub"><td>Total Materials Cost <span class="small">(equipment, materials, transport &amp; permits)</span></td><td class="num">${peso(f.breakdown.materials)}</td></tr>`
-          +`<tr class="sub"><td>Total Labor Cost <span class="small">(${f.breakdown.days} crew days)</span></td><td class="num">${peso(f.breakdown.labor)}</td></tr>`
-          +`<tr class="sub profit"><td>Contractor Profit <span class="small">(${esc(f.breakdown.profitRule)}, ${Math.round(f.breakdown.profit/(f.price-f.nmFee)*100)}% of price)</span></td><td class="num">${peso(f.breakdown.profit)}</td></tr>`
+          +`<tr class="sub"><td>Total Materials Cost <span class="small">(equipment and misc. materials, incl. ${peso(f.breakdown.markup)} markup)</span></td><td class="num">${peso(f.breakdown.materials)}</td></tr>`
+          +`<tr class="sub"><td>Total Labor Cost <span class="small">(${S.install==='difficult'?'difficult':'standard'} installation)</span></td><td class="num">${peso(f.breakdown.labor)}</td></tr>`
+          +`<tr class="sub profit"><td>Contractor Profit <span class="noprint"><input type="number" min="0" max="100" step="1" class="mpin" value="${num(S.set.marginPct,10)}" title="Change the margin to recalculate">%</span> <span class="small">(${esc(f.breakdown.profitRule)}; with markups you earn ${peso(f.breakdown.profit+f.breakdown.markup)}, ${Math.round((f.breakdown.profit+f.breakdown.markup)/(f.price-f.nmFee)*100)}% of price)</span></td><td class="num">${peso(f.breakdown.profit)}</td></tr>`
           +(f.nmFee?`<tr class="sub"><td>Net-metering application</td><td class="num">${peso(f.nmFee)}</td></tr>`:'')
         : f.breakdown.lines.map(l=>`<tr><td>${esc(l[0])}</td><td class="num">${peso(l[1])}</td></tr>`).join('')}
       <tr class="grand"><td>${f.breakdown.isCost?'Total Cost (selling price)':'Selling price'}</td><td class="num">${peso(f.price)}</td></tr></tbody></table>
@@ -1621,10 +1633,10 @@ function quoteText(R){
   return L1.join('\n');
 }
 /* ---------------- Saved proposals (shared via the Apps Script "Proposals" sheet) ---------------- */
-const DESIGN_SET_KEYS=['priceMode','pvPerKW','marginPct','minProfit','crewPerDay','bosPerKW','bosPerInv','bosPerBat','otherCost','pricePerKW','batAdder','rate','utility','nmFee','exportRate','escal','degr','years','psh','pr','dayShare','invMargin','dod','eff','offOversize','vdPV','tMin','tCellMax','vdAC','wPerHP','panel','battery','inverter','custom'];
+const DESIGN_SET_KEYS=['priceMode','pvPerKW','marginPct','minProfit','mkPanel','mkInv','mkBatSmall','mkBatLarge','mkMisc','laborStd','laborHard','crewPerDay','bosPerKW','bosPerInv','bosPerBat','otherCost','pricePerKW','batAdder','rate','utility','nmFee','exportRate','escal','degr','years','psh','pr','dayShare','invMargin','dod','eff','offOversize','vdPV','tMin','tCellMax','vdAC','wPerHP','panel','battery','inverter','custom'];
 let PROP_LIST=[], PROP_SHARED=null, PROP_DELETE_ARM=null;
 function propSnapshot(){ const set={}; DESIGN_SET_KEYS.forEach(k=>set[k]=S.set[k]);
-  return JSON.parse(JSON.stringify({author:S.author||SESSION_NAME, laborDays:S.laborDays, mode:S.mode, custom:S.custom, client:S.client, sys:S.sys, method:S.method, netMeter:S.netMeter, hyb:S.hyb, off:S.off, gt:S.gt, hybOffset:S.hybOffset, hist:S.hist, sched:S.sched, site:S.site, set})); }
+  return JSON.parse(JSON.stringify({author:S.author||SESSION_NAME, laborDays:S.laborDays, install:S.install, mode:S.mode, custom:S.custom, client:S.client, sys:S.sys, method:S.method, netMeter:S.netMeter, hyb:S.hyb, off:S.off, gt:S.gt, hybOffset:S.hybOffset, hist:S.hist, sched:S.sched, site:S.site, set})); }
 function localProps(){ try{ return JSON.parse(localStorage.getItem('exoid_proposals')||'{}'); }catch(e){ return {}; } }
 function setLocalProps(o){ try{ localStorage.setItem('exoid_proposals', JSON.stringify(o)); }catch(e){ flash('This device is out of storage space for proposals.'); } }
 async function apiGet(params){ const u=mailerURL(); if(!u) throw new Error('no mailer'); const q=new URLSearchParams(params).toString(); const r=await fetch(u+(u.includes('?')?'&':'?')+q); const j=await r.json(); if(!j||!j.ok) throw new Error(j&&j.error||'failed'); return j; }
@@ -1676,7 +1688,7 @@ async function openProposal(id, duplicate){
   let rec; try{ rec=await fetchProposal(id); }catch(e){ st.textContent='Could not open that proposal. Check your connection and try again.'; return; }
   if(!rec||!rec.data){ st.textContent='That proposal could not be found. It may have been deleted.'; return; }
   const d=rec.data, keepSet=S.set; S=defaultState(); S.set=keepSet;
-  ['client','sys','method','netMeter','laborDays','mode','custom','hyb','off','gt','hybOffset','hist','sched','site'].forEach(k=>{ if(d[k]!==undefined) S[k]=d[k]; });
+  ['client','sys','method','netMeter','laborDays','install','mode','custom','hyb','off','gt','hybOffset','hist','sched','site'].forEach(k=>{ if(d[k]!==undefined) S[k]=d[k]; });
   S.client=Object.assign(defaultState().client, d.client||{});
   Object.assign(S.set, d.set||{}); S.set.preparedBy=SESSION_NAME||S.set.preparedBy;
   if(duplicate){ S.pid=null; S.savedAt=null; S.author=SESSION_NAME; S.client.name=(S.client.name||'')+' (copy)'; } else { S.pid=rec.meta.id; S.savedAt=rec.meta.updated; S.author=d.author||SESSION_NAME; }
