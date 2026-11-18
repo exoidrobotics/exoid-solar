@@ -203,7 +203,7 @@ body.adv .hideadv{display:none}
     <svg width="26" height="26" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="7" fill="#f2a900"/><g stroke="#f2a900" stroke-width="2.4" stroke-linecap="round"><path d="M17 2v5M17 27v5M2 17h5M27 17h5M6.4 6.4l3.5 3.5M24.1 24.1l3.5 3.5M6.4 27.6l3.5-3.5M24.1 9.9l3.5-3.5"/></g></svg>
     <div class="title">Exoid <span>Solar</span></div>
     <div class="sp"></div>
-    <div class="who"><span id="whoLbl"></span><div style="font-size:10px;opacity:.6">Version 2026-11-18 21:15</div></div>
+    <div class="who"><span id="whoLbl"></span><div style="font-size:10px;opacity:.6">Version 2026-11-18 23:20</div></div>
     <button class="btn ghost sm" id="btnFull" title="Use the whole screen (Esc to exit)">⛶ Full screen</button>
     <button class="btn ghost sm" id="btnAdv" title="Show or hide technical details (wiring, protection, string voltages, installer notes)">⚙ Advanced<span class="cnt hidden" id="advCnt"></span></button>
     <button class="btn ghost sm" id="btnNew">+ New proposal</button>
@@ -692,12 +692,16 @@ function getPanel(){ const set=S.set; let p=set.panel==='auto'?autoPanel():(CATA
 function analyzeLoad(){
   const set=S.set, out={warnings:[]};
   if(S.method==='history'){
-    const ms=S.hist.months.filter(m=>num(m.kwh)>0);
-    if(!ms.length){ out.error='Enter at least the latest month\'s kWh.'; return out; }
-    const avgM = ms.reduce((a,m)=>a+num(m.kwh),0)/ms.length;
+    // a month with only the bill amount: kWh = bill ÷ the selected electricity rate
+    const rateSel=num(set.rate,0);
+    const ms=S.hist.months.map(m=>({kwh: num(m.kwh)>0 ? num(m.kwh) : (num(m.bill)>0 && rateSel>0 ? num(m.bill)/rateSel : 0), bill:num(m.bill), est:!(num(m.kwh)>0)})).filter(m=>m.kwh>0);
+    if(!ms.length){ out.error=rateSel>0?'Enter at least the latest month\'s kWh or bill amount.':'Enter the latest month\'s kWh, or set the electricity rate so the bill amount can be converted.'; return out; }
+    const est=ms.filter(m=>m.est); out.estMonths=est.length;
+    if(est.length) out.warnings.push(est.length+' month'+(est.length>1?'s':'')+' of consumption estimated from the bill amount at ₱'+rateSel.toFixed(2)+'/kWh (bill ÷ rate). Enter the kWh from the bill for a closer estimate.');
+    const avgM = ms.reduce((a,m)=>a+m.kwh,0)/ms.length;
     out.monthly = avgM; out.daily = avgM/30.42; out.monthsUsed=ms.length;
-    const withBill=ms.filter(m=>num(m.bill)>0);
-    if(withBill.length){ out.billRate = withBill.reduce((a,m)=>a+num(m.bill),0)/withBill.reduce((a,m)=>a+num(m.kwh),0); }
+    const withBill=ms.filter(m=>m.bill>0 && !m.est);   // only months with both kWh and bill give a real ₱/kWh
+    if(withBill.length){ out.billRate = withBill.reduce((a,m)=>a+m.bill,0)/withBill.reduce((a,m)=>a+m.kwh,0); }
     out.dayShare = num(set.dayShare,40)/100;
     const avgKW = out.daily/24;
     out.peakKW = num(S.hist.peakKW)>0 ? num(S.hist.peakKW) : Math.max(3, avgKW*3.5);
@@ -1169,7 +1173,7 @@ function fillUtilities(){
   const note=()=>{ const u=UTILITIES.find(x=>x.id===sel.value); document.getElementById('utilNote').innerHTML = u&&u.rate ? `Residential rate, ${u.asOf}. You can still type over it.` : 'Type the rate from the client\'s latest bill (total ÷ kWh).'; };
   sel.onchange=()=>{ S.set.utility=sel.value; const u=UTILITIES.find(x=>x.id===sel.value);
     if(u&&u.rate){ S.set.rate=u.rate; document.querySelectorAll('[data-k="set.rate"]').forEach(i=>i.value=u.rate); } else document.getElementById('rateInput').focus();
-    save(); note(); };
+    save(); note(); histHints(); };
   note();
 } // no blocking dialogs inside the embed
 function setAdv(on){ document.body.classList.toggle('adv',on); const b=document.getElementById('btnAdv'); if(b) b.classList.toggle('on',on); store.set('exoid_adv',on?'1':'0'); }
@@ -1189,7 +1193,8 @@ function bindInputs(root){
   root.querySelectorAll('[data-k]').forEach(el=>{
     const v=getK(el.dataset.k); if(v!==undefined && v!==null) el.value=v;
     el.oninput=el.onchange=()=>{ setK(el.dataset.k, el.type==='number'? (el.value===''?'':parseFloat(el.value)) : el.value); save();
-      if(el.dataset.k==='set.panel') renderCustomPanel(); };
+      if(el.dataset.k==='set.panel') renderCustomPanel();
+      if(el.dataset.k==='set.rate' && typeof histHints==='function') histHints(); };
   });
 }
 function renderAll(){ const dfSel=document.getElementById('selDf'); if(dfSel){ const f=()=>{ document.getElementById('dfFlatWrap').style.visibility=(S.sched.dfMode||'category')==='flat'?'visible':'hidden'; }; dfSel.addEventListener('change',f); f(); } try{ renderCustom(); }catch(e){} const pmSel=document.getElementById('selPriceMode'); if(pmSel){ const f=()=>{ const m=S.set.priceMode||'cost'; document.querySelectorAll('.pm-item').forEach(e=>e.style.display=m==='itemized'?'':'none'); document.querySelectorAll('.pm-flat').forEach(e=>e.style.display=m==='flat'?'':'none'); document.querySelectorAll('.pm-cost').forEach(e=>e.style.display=m==='cost'?'':'none'); }; pmSel.addEventListener('change',f); f(); } const ms=document.getElementById('mailStatus'); if(ms) ms.innerHTML=(S.set.webhook||store.sget('exoid_mail'))?'✅ Automatic mailer is active on this device.':'Automatic mailer not configured.'; bindInputs(document); renderSys(); renderMethod(); renderHist(); renderLoads(); renderCustomPanel(); renderCatalog(); }
@@ -1221,10 +1226,15 @@ function renderMethod(){
 }
 function renderHist(){
   const tb=document.getElementById('histBody');
-  tb.innerHTML=S.hist.months.map((m,i)=>`<tr><td>${i===0?'<b>'+m.label+'</b> <span class="pill">latest — required</span>':m.label}</td>
+  tb.innerHTML=S.hist.months.map((m,i)=>`<tr><td>${i===0?'<b>'+m.label+'</b> <span class="pill">latest — kWh or bill required</span>':m.label}</td>
     <td><input type="number" min="0" data-k="hist.months.${i}.kwh" placeholder="kWh"></td>
     <td><input type="number" min="0" data-k="hist.months.${i}.bill" placeholder="₱"></td></tr>`).join('');
-  bindInputs(tb);
+  bindInputs(tb); histHints();
+  tb.querySelectorAll('input').forEach(i=>i.addEventListener('input', histHints));
+}
+function histHints(){ const r=num(S.set.rate,0);   // show the kWh a bill-only month will be counted as
+  document.querySelectorAll('#histBody tr').forEach((tr,i)=>{ const m=S.hist.months[i], k=tr.querySelector('[data-k$=".kwh"]'); if(!m||!k) return;
+    k.placeholder = !(num(m.kwh)>0) && num(m.bill)>0 && r>0 ? '≈ '+Math.round(num(m.bill)/r)+' kWh (bill ÷ ₱'+r.toFixed(2)+')' : 'kWh'; });
 }
 function renderLoads(){
   const tb=document.getElementById('loadBody'); const L=S.sched.loads;
