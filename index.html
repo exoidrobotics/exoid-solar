@@ -90,7 +90,7 @@ body.adv .hideadv{display:none}
 .catbtns{white-space:nowrap}
 .catbtns .btn{margin:2px}
 @media print{
-  header.top,nav.tabs,.noprint,#tab-input,#tab-settings,#tab-catalog{display:none!important}
+  header.top,nav.tabs,.noprint,#tab-input,#tab-settings,#tab-catalog,#tab-proposals{display:none!important}
   #tab-results{display:block!important}
   body{background:#fff}
   .card{border:0;padding:0;margin-bottom:14px;break-inside:avoid}
@@ -124,10 +124,11 @@ body.adv .hideadv{display:none}
     <div class="sp"></div>
     <div class="who" id="whoLbl"></div>
     <button class="btn ghost sm" style="color:#fff;border-color:#40566e" id="btnAdv" title="Show or hide technical details (wiring, protection, string voltages, installer notes)">⚙ Advanced<span class="cnt hidden" id="advCnt"></span></button>
-    <button class="btn ghost sm" style="color:#fff;border-color:#40566e" id="btnNew">New project</button>
+    <button class="btn ghost sm" style="color:#fff;border-color:#40566e" id="btnNew">+ New proposal</button>
     <button class="btn ghost sm" style="color:#fff;border-color:#40566e" id="btnLogout">Log out</button>
   </header>
   <nav class="tabs">
+    <button data-tab="proposals">📁 Proposals</button>
     <button data-tab="input" class="on">1 · Project &amp; loads</button>
     <button data-tab="results">2 · Recommendation &amp; proposal</button>
     <button data-tab="settings">Assumptions</button>
@@ -136,6 +137,16 @@ body.adv .hideadv{display:none}
 
   <main>
   <!-- ========== INPUT TAB ========== -->
+  <section id="tab-proposals" class="hidden">
+    <div class="card">
+      <div class="row"><h2 style="margin:0">Saved proposals</h2>
+        <input id="propSearch" placeholder="Search client, address, installer…" style="min-width:240px">
+        <button class="btn green right" id="btnNewProp">+ New proposal</button></div>
+      <div class="small" id="propStatus" style="margin:6px 0"></div>
+      <div class="tablewrap"><table><thead><tr><th>Client</th><th>Project address</th><th>System</th><th class="num">kWp</th><th class="num">Price</th><th>Prepared by</th><th>Last saved</th><th></th></tr></thead><tbody id="propBody"></tbody></table></div>
+    </div>
+  </section>
+
   <section id="tab-input">
     <div class="card">
       <h2>Client</h2>
@@ -143,7 +154,8 @@ body.adv .hideadv{display:none}
         <div><label>Client name</label><input id="cName" data-k="client.name"></div>
         <div><label>Client email <span style="color:var(--err)">*</span></label><input id="cEmail" type="email" data-k="client.email"></div>
         <div><label>Phone</label><input data-k="client.phone"></div>
-        <div><label>Site address / city</label><input data-k="client.address"></div>
+        <div><label>Client address</label><input data-k="client.address"></div>
+        <div style="grid-column:span 2"><label>Project / installation address (if different)</label><input data-k="client.site" placeholder="same as client address"></div>
       </div>
     </div>
 
@@ -344,6 +356,8 @@ const CATALOG_BASE = {
   ]
 };
 const CAT_LABEL = {hybrid:'Hybrid', offgrid:'Off-grid', gridtie:'Grid-tie'};
+const COMPANY = { name:'Exoid Robotics Home Automation Services', address:'DOST-Smart City TBI, ISU Cauayan, San Fermin, Cauayan City, Isabela',
+  phone:'09214697486', web:'www.exoidrobotics.com', email:'mgb@exoidrobotics.com' };
 
 /* ---- Utility rates (researched; update monthly) ---- */
 const UTILITIES = [
@@ -399,7 +413,7 @@ const store = { get(k){try{return localStorage.getItem(k);}catch(e){return null;
 let SESSION_USER = null;
 let SESSION_NAME = '';
 function showApp(code){ SESSION_USER=code; SESSION_NAME=(USERS[code]&&USERS[code].name)||('Installer '+code); document.getElementById('login').classList.add('hidden'); document.getElementById('app').classList.remove('hidden');
-  document.getElementById('whoLbl').textContent=SESSION_NAME+' ('+code+')'; S.set.preparedBy=SESSION_NAME; save(); init(); loadSharedCatalog(); }
+  document.getElementById('whoLbl').textContent=SESSION_NAME+' ('+code+')'; S.set.preparedBy=SESSION_NAME; save(); init(); loadSharedCatalog(); showTab('proposals'); loadProposalList(); }
 document.getElementById('loginForm').addEventListener('submit', async e=>{
   e.preventDefault();
   const err=document.getElementById('lgErr'), btn=e.target.querySelector('button');
@@ -427,7 +441,7 @@ const DEFAULT_SET = {
 function monthsBack(){ const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; const d=new Date(); const out=[];
   for(let i=1;i<=6;i++){ const x=new Date(d.getFullYear(), d.getMonth()-i, 1); out.push(m[x.getMonth()]+' '+x.getFullYear()); } return out; }
 function defaultState(){ return {
-  client:{name:'',email:'',phone:'',address:''},
+  client:{name:'',email:'',phone:'',address:'',site:''}, pid:null, savedAt:null, author:'',
   sys:'hybrid', method:'history', netMeter:'yes',
   hyb:{basis:'night', outageH:4, backupKW:''}, off:{autonomy:1}, gt:{offset:100}, hybOffset:100,
   hist:{months:monthsBack().map(l=>({label:l,kwh:'',bill:''})), peakKW:'', motorHP:'', motorInv:'yes', useBillRate:'yes'},
@@ -778,7 +792,10 @@ function init(){
   document.getElementById('btnAddLoad').onclick=()=>{ S.sched.loads.push(newLoad(document.getElementById('addCat').value)); save(); renderLoads(); };
   document.getElementById('btnPresetLoads').onclick=()=>{ if(S.sched.loads.length && !confirmInline()) return; S.sched.loads=presetLoads(); save(); renderLoads(); };
   document.getElementById('btnCalc').onclick=runCalc;
-  document.getElementById('btnNew').onclick=()=>{ const keepSet=S.set; S=defaultState(); S.set=keepSet; save(); renderAll(); showTab('input'); };
+  document.getElementById('btnNew').onclick=newProposal;
+  document.getElementById('btnNewProp').onclick=newProposal;
+  document.getElementById('propSearch').oninput=renderProposalList;
+  document.querySelector('nav.tabs button[data-tab=proposals]').addEventListener('click', loadProposalList);
   document.getElementById('btnResetSettings').onclick=()=>{ const pb=S.set.preparedBy; S.set=JSON.parse(JSON.stringify(DEFAULT_SET)); S.set.preparedBy=pb; save(); renderAll(); };
   renderAll();
 }
@@ -801,7 +818,7 @@ function fillUtilities(){
 function setAdv(on){ document.body.classList.toggle('adv',on); const b=document.getElementById('btnAdv'); if(b) b.classList.toggle('on',on); store.set('exoid_adv',on?'1':'0'); }
 function updateAdvCount(){ const c=document.getElementById('advCnt'); const n=LAST?(LAST.warnings.length):0; c.textContent=n; c.classList.toggle('hidden',!n); c.title=n+' installer warning(s)'; }
 function showTab(t){ document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
-  ['input','results','settings','catalog'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t)); window.scrollTo(0,0); }
+  ['proposals','input','results','settings','catalog'].forEach(x=>document.getElementById('tab-'+x).classList.toggle('hidden',x!==t)); window.scrollTo(0,0); }
 function bindInputs(root){
   root.querySelectorAll('[data-k]').forEach(el=>{
     const v=getK(el.dataset.k); if(v!==undefined && v!==null) el.value=v;
@@ -981,6 +998,7 @@ function runCalc(){
   if(R.error && !R.inv){ box.innerHTML=`<div class="errbox">${R.error}</div>`; showTab('results'); return; }
   box.innerHTML=renderResults(R); showTab('results'); updateAdvCount();
   document.getElementById('btnPrint').onclick=()=>window.print();
+  document.getElementById('btnSaveProp').onclick=()=>saveProposal(R);
   document.getElementById('btnPdf').onclick=async()=>{ try{ flash('Preparing PDF…'); const pdf=await makePdf(R); pdf.save(pdfName(R)); flash('PDF downloaded.'); }catch(e){ flash('Could not create the PDF ('+e.message+'). Use Print → Save as PDF instead.'); } };
   document.getElementById('btnEmail').onclick=()=>emailQuote(R);
   document.getElementById('btnCopy').onclick=()=>{ const t=quoteText(R); (navigator.clipboard?navigator.clipboard.writeText(t):Promise.reject()).then(()=>flash('Summary copied.')).catch(()=>flash('Copy not allowed here. Select the text in the proposal instead.')); };
@@ -1015,6 +1033,7 @@ function renderResults(R){
   const chart = cashChart(f);
   return `
   <div class="card noprint"><div class="row">
+    <button class="btn green" id="btnSaveProp">💾 ${S.pid?'Save changes':'Save proposal'}</button>
     <button class="btn" id="btnEmail">✉ Send to Email</button>
     <button class="btn sec" id="btnPdf">⬇ Download PDF</button>
     <button class="btn ghost" id="btnPrint">Print</button>
@@ -1023,9 +1042,10 @@ function renderResults(R){
     <div class="tech">${warn}${notes}</div>
   </div>
   <div class="card prop">
-    <div class="head"><div><h1>Solar PV System Proposal</h1><div>${sysName}</div></div>
-      <div style="text-align:right"><b>Exoid Robotics</b><div class="small">www.exoidrobotics.com</div><div class="small">${today}</div><div class="small">Prepared by: ${esc(set.preparedBy)}</div></div></div>
-    <div class="grid g2"><div><div class="small">Client</div><b>${esc(S.client.name)||'—'}</b><div class="small">${esc(S.client.address)} ${S.client.phone?' · '+esc(S.client.phone):''}</div><div class="small">${esc(S.client.email)}</div></div>
+    <div class="head"><div><h1>Solar PV System Proposal</h1><div>${sysName}</div><div class="small" style="margin-top:6px">${today} · Prepared by: <b>${esc(S.author||set.preparedBy)}</b></div></div>
+      <div style="text-align:right;flex:0 0 300px;max-width:100%"><b>${COMPANY.name}</b><div class="small">${COMPANY.address}</div><div class="small">${COMPANY.phone} · ${COMPANY.email}</div><div class="small">${COMPANY.web}</div></div></div>
+    <div class="grid g2"><div><div class="small">Client</div><b>${esc(S.client.name)||'—'}</b>${S.client.address?`<div class="small">${esc(S.client.address)}</div>`:''}<div class="small">${[S.client.phone,S.client.email].filter(Boolean).map(esc).join(' · ')}</div>
+        <div class="small" style="margin-top:6px">Project site</div><div>${esc(S.client.site||S.client.address)||'—'}</div></div>
       <div><div class="small">Basis of design</div>${S.method==='history'?`Average of ${L.monthsUsed} month(s) of bills: <b>${Math.round(L.monthly)} kWh/month</b>`:`Schedule of loads: <b>${r1(L.daily)} kWh/day</b>, connected ${Math.round(L.connectedW).toLocaleString()} W`}
       <div class="small tech">Peak demand ${r1(L.peakKW)} kW${L.peakEstimated?' (estimated)':''} · motor starting ~${r1(L.surgeKW)} kW · ${Math.round(L.dayShare*100)}% daytime use</div></div></div>
     <h3 style="margin-top:16px">System summary</h3>
@@ -1143,8 +1163,8 @@ function quoteText(R){
   const perk = {hybrid:'• Battery backup keeps your essential appliances running during brownouts',
                 offgrid:'• Full energy independence — your home runs on solar and battery power, with no electric bill',
                 gridtie: f.netOn?'• Excess solar energy is exported to the grid and credited to your bill through net metering':'• The lowest-cost way to cut your daytime electricity bill'}[R.sys];
-  const sig = [set.sigName || set.preparedBy || 'Exoid Robotics Team', set.sigTitle, 'Exoid Robotics',
-               set.sigPhone ? 'Mobile: '+set.sigPhone : '', set.sigEmail ? 'Email: '+set.sigEmail : '', 'www.exoidrobotics.com'].filter(Boolean);
+  const sig = [set.sigName || set.preparedBy || 'Exoid Robotics Team', set.sigTitle, COMPANY.name,
+               'Mobile: '+(set.sigPhone||COMPANY.phone), 'Email: '+(set.sigEmail||COMPANY.email), COMPANY.web].filter(Boolean);
   const L1=[
     greet, ``,
     `Thank you for considering Exoid Robotics for your solar energy needs. Based on ${basis}, we've designed a ${r2(R.kWp)} kWp ${kind} for your property. Here is a summary of your quote.`,
@@ -1169,6 +1189,79 @@ function quoteText(R){
     ``, `Warm regards,`, ``, ...sig);
   return L1.join('\n');
 }
+/* ---------------- Saved proposals (shared via the Apps Script "Proposals" sheet) ---------------- */
+const DESIGN_SET_KEYS=['pricePerKW','batAdder','rate','utility','nmFee','exportRate','escal','degr','years','psh','pr','dayShare','invMargin','dod','eff','offOversize','vdPV','tMin','tCellMax','vdAC','wPerHP','panel','battery','inverter','custom'];
+let PROP_LIST=[], PROP_SHARED=null, PROP_DELETE_ARM=null;
+function propSnapshot(){ const set={}; DESIGN_SET_KEYS.forEach(k=>set[k]=S.set[k]);
+  return JSON.parse(JSON.stringify({author:S.author||SESSION_NAME, client:S.client, sys:S.sys, method:S.method, netMeter:S.netMeter, hyb:S.hyb, off:S.off, gt:S.gt, hybOffset:S.hybOffset, hist:S.hist, sched:S.sched, site:S.site, set})); }
+function localProps(){ try{ return JSON.parse(localStorage.getItem('exoid_proposals')||'{}'); }catch(e){ return {}; } }
+function setLocalProps(o){ try{ localStorage.setItem('exoid_proposals', JSON.stringify(o)); }catch(e){ flash('This device is out of storage space for proposals.'); } }
+async function apiGet(params){ const u=mailerURL(); if(!u) throw new Error('no mailer'); const q=new URLSearchParams(params).toString(); const r=await fetch(u+(u.includes('?')?'&':'?')+q); const j=await r.json(); if(!j||!j.ok) throw new Error(j&&j.error||'failed'); return j; }
+async function apiPost(body){ const u=mailerURL(); if(!u) throw new Error('no mailer'); const r=await fetch(u,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(body)}); const j=await r.json(); if(!j||!j.ok) throw new Error(j&&j.error||'failed'); return j; }
+function newProposal(){ const keepSet=S.set; S=defaultState(); S.set=keepSet; S.set.preparedBy=SESSION_NAME||keepSet.preparedBy; S.author=SESSION_NAME; save(); LAST=null;
+  document.getElementById('results').classList.add('hidden'); document.getElementById('resultsEmpty').classList.remove('hidden');
+  renderAll(); showTab('input'); }
+async function saveProposal(R){
+  const btn=document.getElementById('btnSaveProp'); btn.disabled=true; flash('Saving…');
+  const isNew=!S.pid; if(isNew) S.pid='P'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+  if(!S.author) S.author=SESSION_NAME;
+  const meta={id:S.pid, installer:S.author, lastEditedBy:SESSION_NAME, client:S.client.name||'(no name)', clientAddress:S.client.address||'', projectAddress:S.client.site||S.client.address||'',
+    system:CAT_LABEL[R.sys], kWp:r2(R.kWp), price:Math.round(R.fin.price), updated:new Date().toISOString()};
+  const rec={meta, data:propSnapshot()};
+  let shared=false;
+  try{ await apiPost({action:'saveProposal', proposal:rec}); shared=true; }catch(e){ shared=false; }
+  if(!shared){ const lp=localProps(); lp[S.pid]=rec; setLocalProps(lp); }
+  S.savedAt=meta.updated; save(); btn.disabled=false; btn.textContent='💾 Save changes';
+  flash(shared?'Proposal saved — it is in the Proposals list for all installers.':'Saved on this device only (update the Apps Script to share proposals).');
+}
+async function loadProposalList(){
+  const st=document.getElementById('propStatus'); st.textContent='Loading…';
+  const local=Object.values(localProps()).map(r=>Object.assign({},r.meta,{local:true}));
+  try{ const j=await apiGet({action:'proposals'}); PROP_LIST=(j.proposals||[]).concat(local.filter(l=>!(j.proposals||[]).some(p=>p.id===l.id))); PROP_SHARED=true; }
+  catch(e){ PROP_LIST=local; PROP_SHARED=false; }
+  PROP_LIST.sort((a,b)=>String(b.updated).localeCompare(String(a.updated)));
+  st.textContent = PROP_SHARED ? `${PROP_LIST.length} proposal${PROP_LIST.length===1?'':'s'} · shared with all installers` : `${PROP_LIST.length} proposal(s) on this device only. Update the Apps Script to share proposals between installers.`;
+  renderProposalList();
+}
+function fmtDate(iso){ try{ const d=new Date(iso); return d.toLocaleDateString('en-PH',{month:'short',day:'numeric',year:'numeric'})+' '+d.toLocaleTimeString('en-PH',{hour:'numeric',minute:'2-digit'}); }catch(e){ return ''; } }
+function renderProposalList(){
+  const q=(document.getElementById('propSearch').value||'').toLowerCase();
+  const rows=PROP_LIST.filter(p=>!q || [p.client,p.clientAddress,p.projectAddress,p.installer,p.system].join(' ').toLowerCase().includes(q));
+  const tb=document.getElementById('propBody');
+  tb.innerHTML = rows.map(p=>`<tr><td><b>${esc(p.client)}</b>${p.local?' <span class="pill">this device</span>':''}${p.id===S.pid?' <span class="pill v">open</span>':''}</td><td class="small">${esc(p.projectAddress)}</td><td>${esc(p.system)}</td>
+    <td class="num">${p.kWp}</td><td class="num">${peso(p.price)}</td><td class="small">${esc(p.installer)}</td><td class="small">${fmtDate(p.updated)}</td>
+    <td class="catbtns"><button class="btn sec sm" data-open="${p.id}">Open</button><button class="btn ghost sm" data-dup="${p.id}">Duplicate</button><button class="btn ghost sm" data-delp="${p.id}" style="${PROP_DELETE_ARM===p.id?'background:#b3261e;color:#fff;border-color:#b3261e':''}">${PROP_DELETE_ARM===p.id?'Confirm delete':'Delete'}</button></td></tr>`).join('')
+    || `<tr><td colspan="8" class="small" style="padding:14px">${PROP_LIST.length?'No proposals match your search.':'No saved proposals yet. Make a proposal, then press 💾 Save proposal on the Recommendation page.'}</td></tr>`;
+  tb.querySelectorAll('[data-open]').forEach(b=>b.onclick=()=>openProposal(b.dataset.open,false));
+  tb.querySelectorAll('[data-dup]').forEach(b=>b.onclick=()=>openProposal(b.dataset.dup,true));
+  tb.querySelectorAll('[data-delp]').forEach(b=>b.onclick=()=>deleteProposal(b.dataset.delp));
+}
+async function fetchProposal(id){
+  const lp=localProps(); if(lp[id]) return lp[id];
+  const j=await apiGet({action:'proposal', id}); return j.proposal;
+}
+async function openProposal(id, duplicate){
+  const st=document.getElementById('propStatus'); st.textContent=duplicate?'Duplicating…':'Opening…';
+  let rec; try{ rec=await fetchProposal(id); }catch(e){ st.textContent='Could not open that proposal. Check your connection and try again.'; return; }
+  if(!rec||!rec.data){ st.textContent='That proposal could not be found. It may have been deleted.'; return; }
+  const d=rec.data, keepSet=S.set; S=defaultState(); S.set=keepSet;
+  ['client','sys','method','netMeter','hyb','off','gt','hybOffset','hist','sched','site'].forEach(k=>{ if(d[k]!==undefined) S[k]=d[k]; });
+  S.client=Object.assign(defaultState().client, d.client||{});
+  Object.assign(S.set, d.set||{}); S.set.preparedBy=SESSION_NAME||S.set.preparedBy;
+  if(duplicate){ S.pid=null; S.savedAt=null; S.author=SESSION_NAME; S.client.name=(S.client.name||'')+' (copy)'; } else { S.pid=rec.meta.id; S.savedAt=rec.meta.updated; S.author=d.author||SESSION_NAME; }
+  save(); renderAll(); fillUtilities();
+  if(S.client.email){ runCalc(); if(duplicate) flash('Duplicated. Edit it, then press 💾 Save proposal to keep the copy.'); else flash('Opened. Make your changes, then press 💾 Save changes.'); }
+  else showTab('input');
+}
+async function deleteProposal(id){
+  if(PROP_DELETE_ARM!==id){ PROP_DELETE_ARM=id; renderProposalList(); setTimeout(()=>{ if(PROP_DELETE_ARM===id){ PROP_DELETE_ARM=null; renderProposalList(); } },4000); return; }
+  PROP_DELETE_ARM=null;
+  const lp=localProps(); if(lp[id]){ delete lp[id]; setLocalProps(lp); }
+  else { try{ await apiPost({action:'deleteProposal', id}); }catch(e){ document.getElementById('propStatus').textContent='Delete failed. Check your connection and try again.'; return; } }
+  if(S.pid===id){ S.pid=null; S.savedAt=null; save(); }
+  loadProposalList();
+}
+
 /* ---------------- Proposal PDF ---------------- */
 const PDF_DISCLAIMER = 'Estimated price only, final price after full inspection.';
 let _pdfLib=null;
@@ -1185,6 +1278,7 @@ async function makePdf(R){
   el.querySelectorAll('.tech,.noprint,.hideadv').forEach(n=>n.remove());   // client copy: no technical tables
   el.style.cssText='width:'+CW+'px;box-sizing:border-box;background:#fff;border:0;padding:0;margin:0;font-size:12.5px';
   el.querySelectorAll('.kpis').forEach(k=>k.style.gridTemplateColumns='repeat(3,1fr)');
+  el.querySelectorAll('.head').forEach(h=>{ h.style.flexWrap='nowrap'; h.firstElementChild.style.flex='1 1 auto'; });
   el.querySelectorAll('.diagram').forEach(d=>{ d.style.overflow='visible'; });
   el.querySelectorAll('svg').forEach(sv=>{ const vb=(sv.getAttribute('viewBox')||'').split(/\s+/).map(Number);
     if(vb.length===4 && vb[2]>0){ const W=CW-20, H=Math.round(W*vb[3]/vb[2]); sv.setAttribute('width',W); sv.setAttribute('height',H); sv.style.width=W+'px'; sv.style.height=H+'px'; sv.style.minWidth='0'; } });
