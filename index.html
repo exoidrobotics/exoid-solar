@@ -84,6 +84,11 @@ body.adv .hideadv{display:none}
 #btnAdv.on{background:#f2a900;color:#0d2238;border-color:#f2a900}
 #btnAdv .cnt{display:inline-block;min-width:18px;padding:0 5px;margin-left:6px;border-radius:9px;background:#b26a00;color:#fff;font-size:11px}
 .pricenote{margin:10px 0 4px;padding:8px 12px;border:1px solid #f2a900;background:#fff8e6;border-radius:8px;font-weight:700;color:#7a4b00}
+#catModal{position:fixed;inset:0;background:rgba(13,34,56,.45);display:flex;align-items:flex-start;justify-content:center;padding:30px 12px;z-index:50;overflow:auto}
+#catModal .box{background:#fff;border-radius:12px;max-width:760px;width:100%;padding:18px;box-shadow:0 10px 40px rgba(0,0,0,.2)}
+.catrow-off{opacity:.45}
+.catbtns{white-space:nowrap}
+.catbtns .btn{margin:2px}
 @media print{
   header.top,nav.tabs,.noprint,#tab-input,#tab-settings,#tab-catalog{display:none!important}
   #tab-results{display:block!important}
@@ -201,6 +206,15 @@ body.adv .hideadv{display:none}
     </div>
 
     <div class="card">
+      <h2>Electricity rate</h2>
+      <div class="grid g4">
+        <div style="grid-column:span 2"><label>Electric company</label><select id="selUtil"></select></div>
+        <div><label>Rate (₱ per kWh)</label><input type="number" step="0.0001" min="0" id="rateInput" data-k="set.rate"></div>
+        <div><label>&nbsp;</label><div class="small" id="utilNote"></div></div>
+      </div>
+    </div>
+
+    <div class="card">
       <h2>Site</h2>
       <div class="grid g4">
         <div><label>Usable roof area (m²) — optional</label><input type="number" min="0" data-k="site.roof" placeholder="no limit"></div>
@@ -234,9 +248,9 @@ body.adv .hideadv{display:none}
         <div><label>Rate escalation per year (%)</label><input type="number" step="0.5" data-k="set.escal"></div>
         <div><label>Panel degradation per year (%)</label><input type="number" step="0.05" data-k="set.degr"></div>
         <div><label>Analysis period (years)</label><input type="number" data-k="set.years"></div>
-        <div><label>Export allowed (net-metering)?</label><select data-k="set.export"><option value="yes">Yes</option><option value="no">No (zero export)</option></select></div>
+        <div><label>Net-metering application fee (₱)</label><input type="number" data-k="set.nmFee"></div>
       </div>
-      <p class="small">Default rate: Meralco residential rate, November 2026 (₱15.5510/kWh). Change it for other distribution utilities or cooperatives. The export credit is an estimate; check the net-metering credit on the client's bill.</p>
+      <p class="small">Pick the client's electric company on the <b>Project &amp; loads</b> page to fill in the rate. The export credit is an estimate; check the net-metering credit on the client's bill. The net-metering fee is added to the price whenever net metering is switched on for a project.</p>
     </div>
     <div class="card">
       <h2>Energy &amp; design</h2>
@@ -284,7 +298,7 @@ body.adv .hideadv{display:none}
   <section id="tab-catalog" class="hidden">
     <div class="card">
       <h2>Equipment catalog</h2>
-      <p class="small">These are the models the tool chooses from. Specs come from manufacturer datasheets. Items tagged <span class="pill v">verify</span> include a value inferred from a sister model or a typical figure; confirm with your distributor before final design. Each item has an image slot: put your distributor-supplied photo URL in the catalog block of the code (<code>img:</code>).</p>
+      <p class="small">These are the models the tool chooses from. Use <b>Edit</b> to correct specs or upload a product photo, <b>+ Add</b> for new models, and <b>Mark unavailable</b> to stop the tool recommending something that is out of stock locally. Changes are shared with every installer. Built-in models can always be <b>Reset</b> to the original datasheet values. Items tagged <span class="pill v">verify</span> include a value inferred from a sister model or a typical figure; confirm with your distributor.</p>
       <div id="catalogView"></div>
     </div>
   </section>
@@ -296,7 +310,7 @@ body.adv .hideadv{display:none}
    EQUIPMENT CATALOG  — edit here to add/update models, prices or photos.
    img: put a URL to a distributor-supplied product photo ('' = empty slot)
    ====================================================================== */
-const CATALOG = {
+const CATALOG_BASE = {
   inverters: [
     // ---- Growatt SPM series: single-phase 230V hybrid, 48V low-voltage battery, grid-interactive ----
     {id:'SPM3000', brand:'Growatt', model:'SPM 3000TL-HU', type:'hybrid', kw:3,  surge:1.0, maxPV:4500,  vdcMax:600, mpptMin:150, mpptMax:550, startV:150, mppt:[22,22], battI:70,  parallel:6, img:'', verify:'DC voltage window and MPPT current taken from SPM 6000TL-HU datasheet (same series).', url:'https://en.growatt.com/'},
@@ -309,6 +323,10 @@ const CATALOG = {
     {id:'SPF3500', brand:'Growatt', model:'SPF 3500 ES',      type:'offgrid', kw:3.5, surge:2.0, maxPV:4500, vdcMax:450, mpptMin:120, mpptMax:430, startV:120, mppt:[18], chargeA:80,  parallel:6, img:'', verify:'MPPT current limit is the 18 A max PV input (Isc) on the certification record.', url:'https://cdn.enf.com.cn/z/pp/2023/8/3st2suz7ml7joq/SPF-3500-5000-ES-Datasheet.pdf'},
     {id:'SPF5000', brand:'Growatt', model:'SPF 5000 ES',      type:'offgrid', kw:5,   surge:2.0, maxPV:6000, vdcMax:450, mpptMin:120, mpptMax:430, startV:120, mppt:[18], chargeA:100, parallel:6, img:'', verify:'MPPT current limit assumed same as SPF 3500 ES (18 A).', url:'https://cdn.enf.com.cn/z/pp/2023/8/3st2suz7ml7joq/SPF-3500-5000-ES-Datasheet.pdf'},
     {id:'SPF6000', brand:'Growatt', model:'SPF 6000 ES Plus', type:'offgrid', kw:6,   surge:2.0, maxPV:8000, vdcMax:500, mpptMin:120, mpptMax:450, startV:120, mppt:[16,16], chargeA:100, parallel:6, img:'', verify:'', url:'https://aurinkosahkotukku.fi/wp-content/uploads/2025/01/SPF-6000-ES-Plus.cdr_.pdf'},
+    // ---- Growatt SPE ES: 230V hybrid, 48V battery, also usable off-grid; dual output ----
+    {id:'SPE8000',  brand:'Growatt', model:'SPE 8000 ES',  type:'hybrid', alsoOffgrid:true, kw:8,  surge:1.0, maxPV:10000, vdcMax:550, mpptMin:60, mpptMax:480, startV:120, mppt:[27,27], battI:200, chargeA:190, parallel:6, img:'', verify:'Parallel count and surge rating not on the datasheet; confirm with Growatt.', url:'https://offgridtec.com/media/product_attachements/Growatt_SPE_8000-12000_ES_DataSheet.pdf'},
+    {id:'SPE10000', brand:'Growatt', model:'SPE 10000 ES', type:'hybrid', alsoOffgrid:true, kw:10, surge:1.0, maxPV:12500, vdcMax:550, mpptMin:60, mpptMax:480, startV:120, mppt:[27,27], battI:240, chargeA:220, parallel:6, img:'', verify:'Parallel count and surge rating not on the datasheet; confirm with Growatt.', url:'https://offgridtec.com/media/product_attachements/Growatt_SPE_8000-12000_ES_DataSheet.pdf'},
+    {id:'SPE12000', brand:'Growatt', model:'SPE 12000 ES', type:'hybrid', alsoOffgrid:true, kw:12, surge:1.0, maxPV:15000, vdcMax:550, mpptMin:60, mpptMax:480, startV:120, mppt:[27,27], battI:280, chargeA:250, parallel:6, img:'', verify:'Parallel count and surge rating not on the datasheet; confirm with Growatt.', url:'https://offgridtec.com/media/product_attachements/Growatt_SPE_8000-12000_ES_DataSheet.pdf'},
     // ---- Growatt MIN TL-X: single-phase grid-tie, no battery ----
     {id:'MIN3000', brand:'Growatt', model:'MIN 3000TL-X', type:'gridtie', kw:3, surge:0, maxPV:4200, vdcMax:500, mpptMin:80, mpptMax:500, startV:100, mppt:[12.5,12.5], parallel:20, img:'', verify:'Newer units accept 13.5 A per MPPT; 12.5 A used to be safe.', url:'https://cdn.shopify.com/s/files/1/0259/7486/5967/files/MIN_2.5-6K_TL-X.pdf'},
     {id:'MIN5000', brand:'Growatt', model:'MIN 5000TL-X', type:'gridtie', kw:5, surge:0, maxPV:7000, vdcMax:550, mpptMin:80, mpptMax:550, startV:100, mppt:[12.5,12.5], parallel:20, img:'', verify:'Newer units accept 13.5 A per MPPT; 12.5 A used to be safe.', url:'https://cdn.shopify.com/s/files/1/0259/7486/5967/files/MIN_2.5-6K_TL-X.pdf'},
@@ -325,6 +343,26 @@ const CATALOG = {
   ]
 };
 const CAT_LABEL = {hybrid:'Hybrid', offgrid:'Off-grid', gridtie:'Grid-tie'};
+
+/* ---- Utility rates (researched; update monthly) ---- */
+const UTILITIES = [
+  {id:'meralco', name:'Meralco — Metro Manila & nearby provinces', rate:15.5510, asOf:'November 2026'},
+  {id:'veco',    name:'Visayan Electric (VECO) — Metro Cebu',      rate:15.30,   asOf:'October 2026'},
+  {id:'dlpc',    name:'Davao Light — Davao City & nearby',          rate:13.33,   asOf:'Oct 11 – Nov 10, 2026 billing'},
+  {id:'other',   name:'Other utility / electric cooperative — type the rate'}
+];
+
+/* ---- Catalog = built-in models + shared edits (stored in the Apps Script Drive file) ---- */
+let CAT_EDITS = {over:{}, added:[]};
+try{ const c=JSON.parse(localStorage.getItem('exoid_catalog_edits')||'null'); if(c&&c.over) CAT_EDITS=c; }catch(e){}
+function buildCatalog(){ const out={};
+  for(const k of ['inverters','batteries','panels']){
+    out[k]=CATALOG_BASE[k].map(x=>Object.assign({},x,CAT_EDITS.over[x.id]||{},{builtin:true}))
+      .concat((CAT_EDITS.added||[]).filter(a=>a.kind===k).map(a=>Object.assign({},a,CAT_EDITS.over[a.id]||{},{builtin:false}))); }
+  return out; }
+let CATALOG = buildCatalog();
+const isAvail = x => x.available!==false;
+function invFamily(type){ return CATALOG.inverters.filter(i=>isAvail(i) && (i.type===type || (type==='offgrid' && i.alsoOffgrid))); }
 
 /* ---------------- Login (client-side gate) ---------------- */
 // Login check: PBKDF2-SHA256("CODE|PASSWORD", 150k iterations). Only the derived hash is stored here, never the password.
@@ -360,7 +398,7 @@ const store = { get(k){try{return localStorage.getItem(k);}catch(e){return null;
 let SESSION_USER = null;
 let SESSION_NAME = '';
 function showApp(code){ SESSION_USER=code; SESSION_NAME=(USERS[code]&&USERS[code].name)||('Installer '+code); document.getElementById('login').classList.add('hidden'); document.getElementById('app').classList.remove('hidden');
-  document.getElementById('whoLbl').textContent=SESSION_NAME+' ('+code+')'; S.set.preparedBy=SESSION_NAME; save(); init(); }
+  document.getElementById('whoLbl').textContent=SESSION_NAME+' ('+code+')'; S.set.preparedBy=SESSION_NAME; save(); init(); loadSharedCatalog(); }
 document.getElementById('loginForm').addEventListener('submit', async e=>{
   e.preventDefault();
   const err=document.getElementById('lgErr'), btn=e.target.querySelector('button');
@@ -380,7 +418,7 @@ document.getElementById('btnLogout').onclick=()=>{ store.sdel('exoid_auth'); loc
 
 /* ---------------- State ---------------- */
 const DEFAULT_SET = {
-  pricePerKW:50000, batAdder:0, rate:15.551, exportRate:7.0, escal:3, degr:0.4, years:25, export:'yes',
+  pricePerKW:50000, batAdder:0, rate:15.551, utility:'meralco', nmFee:50000, exportRate:7.0, escal:3, degr:0.4, years:25,
   psh:4.5, pr:0.80, dayShare:40, invMargin:15, dod:90, eff:95, offOversize:20, vdPV:2, tMin:10, tCellMax:70, vdAC:3, wPerHP:850,
   panel:'JK620', battery:'auto', inverter:'auto', preparedBy:'', ccEmail:'mgb@exoidrobotics.com', webhook:'', sigName:'', sigTitle:'Solar Energy Consultant', sigPhone:'', sigEmail:'mgb@exoidrobotics.com',
   custom:{wp:580, voc:51.5, vmp:42.5, isc:14.3, imp:13.65, tVoc:-0.27}
@@ -389,7 +427,7 @@ function monthsBack(){ const m=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug',
   for(let i=1;i<=6;i++){ const x=new Date(d.getFullYear(), d.getMonth()-i, 1); out.push(m[x.getMonth()]+' '+x.getFullYear()); } return out; }
 function defaultState(){ return {
   client:{name:'',email:'',phone:'',address:''},
-  sys:'hybrid', method:'history',
+  sys:'hybrid', method:'history', netMeter:'yes',
   hyb:{basis:'night', outageH:4, backupKW:''}, off:{autonomy:1}, gt:{offset:100}, hybOffset:100,
   hist:{months:monthsBack().map(l=>({label:l,kwh:'',bill:''})), peakKW:'', motorHP:'', motorInv:'yes', useBillRate:'yes'},
   sched:{voltage:230, demand:0.75, loads:[]},
@@ -452,7 +490,7 @@ const groundFor = a => a<=20?2.0: a<=60?3.5: a<=100?5.5: a<=200?8.0: a<=400?14:2
 const r1 = x=>Math.round(x*10)/10, r2=x=>Math.round(x*100)/100;
 const peso = x=>'₱'+Math.round(x).toLocaleString('en-PH');
 
-function getPanel(){ const set=S.set; let p=CATALOG.panels.find(x=>x.id===set.panel)||CATALOG.panels[0];
+function getPanel(){ const set=S.set; let p=CATALOG.panels.find(x=>x.id===set.panel)||CATALOG.panels.find(isAvail)||CATALOG.panels[0];
   if(p.id==='CUSTOM'){ const c=set.custom; p=Object.assign({},p,{wp:num(c.wp),voc:num(c.voc),vmp:num(c.vmp),isc:num(c.isc),imp:num(c.imp),tVoc:num(c.tVoc,-0.27),area:num(c.wp)/1000/0.215}); }
   return p; }
 
@@ -494,7 +532,7 @@ function analyzeLoad(){
 }
 
 function chooseInverter(type, needKW, pvW, surgeKW){
-  const set=S.set; let cands=CATALOG.inverters.filter(i=>i.type===type);
+  const set=S.set; let cands=invFamily(type);
   if(set.inverter!=='auto'){ const f=cands.filter(i=>i.id===set.inverter); if(f.length) cands=f; }
   cands=cands.slice().sort((a,b)=>a.kw-b.kw);
   const maxPar = Math.max(...cands.map(c=>c.parallel));
@@ -540,7 +578,7 @@ function stringDesign(inv, panel, panelsPerInv){
 }
 
 function chooseBattery(nomKWh, demandA){
-  const set=S.set; let cands=CATALOG.batteries;
+  const set=S.set; let cands=CATALOG.batteries.filter(isAvail); if(!cands.length) cands=CATALOG.batteries;
   if(set.battery!=='auto') cands=cands.filter(b=>b.id===set.battery);
   const opts=cands.map(b=>{ const byE=Math.ceil(nomKWh/b.kwh-1e-9), byI=Math.ceil(demandA/b.maxI-1e-9);
     const n=Math.max(1,byE,byI); return {b,n,kwh:n*b.kwh,byE,byI}; });
@@ -582,7 +620,7 @@ function calculate(){
   let pick=chooseInverter(sys, needKW, panelsNeeded*panel.wp, surgeKW);
   // string design; if panels per inverter can't fit, add an inverter
   let sd, guard=0;
-  const family = CATALOG.inverters.filter(i=>i.type===sys && (set.inverter==='auto'||i.id===set.inverter)).sort((a,b)=>a.kw-b.kw);
+  const family = invFamily(sys).filter(i=>set.inverter==='auto'||i.id===set.inverter).sort((a,b)=>a.kw-b.kw);
   while(true){
     const per=Math.ceil(panelsNeeded/pick.n);
     sd=stringDesign(pick.inv, panel, per);
@@ -701,20 +739,21 @@ function finance(R, L, panel){
   const set=S.set, rate=R.rate, exp=num(set.exportRate,7), esc=num(set.escal,3)/100, deg=num(set.degr,0.4)/100, years=Math.round(num(set.years,25));
   const eff=num(set.eff,95)/100;
   const ePV1 = R.kWp*num(set.psh,4.5)*num(set.pr,0.8);
-  const exportAllowed = R.sys!=='offgrid' && set.export==='yes';
+  const netOn = R.sys!=='offgrid' && S.netMeter!=='no'; const exportAllowed = netOn;
+  const nmFee = netOn ? num(set.nmFee,50000) : 0;
   const D=L.daily*L.dayShare, Nn=L.daily-D;
   function day(ePV){ const direct=Math.min(ePV,D); let sur=ePV-direct, fromBat=0;
     if(R.bat){ const toBat=Math.min(sur, R.batUsable, Nn/eff); fromBat=Math.min(toBat*eff, Nn); sur-=toBat; }
     const exported = exportAllowed? sur:0; return {direct, fromBat, exported, curtailed: exportAllowed?0:sur}; }
   const d1=day(ePV1);
-  const priceSys = R.kWp*num(set.pricePerKW,50000) + (R.bat? R.bat.kwh*num(set.batAdder,0):0);
+  const priceSys = R.kWp*num(set.pricePerKW,50000) + (R.bat? R.bat.kwh*num(set.batAdder,0):0) + nmFee;
   let cum=-priceSys, payback=null; const flows=[]; let total=0;
   for(let y=1;y<=years;y++){ const dd=day(ePV1*Math.pow(1-deg,y-1)); const r=rate*Math.pow(1+esc,y-1), xr=exp*Math.pow(1+esc,y-1);
     const sav=365*((dd.direct+dd.fromBat)*r + dd.exported*xr); total+=sav; const prev=cum; cum+=sav; flows.push({y,sav,cum});
     if(payback===null && cum>=0) payback = (y-1) + (-prev)/sav; }
   const yr1 = flows[0].sav;
   return { ePV1, ePVyr:ePV1*365, d1, solarFraction: Math.min(1,(d1.direct+d1.fromBat)/L.daily), offset: Math.min(1, (exportAllowed? ePV1 : (d1.direct+d1.fromBat))/L.daily), price:priceSys, yr1, monthly1:yr1/12,
-    payback, total, net: total-priceSys, roi:(total-priceSys)/priceSys*100, flows, exportAllowed,
+    payback, total, net: total-priceSys, nmFee, netOn, roi:(total-priceSys)/priceSys*100, flows, exportAllowed,
     billBefore: L.monthly*rate, billAfter: Math.max(0, L.monthly*rate - yr1/12) };
 }
 
@@ -728,11 +767,9 @@ function init(){
   setAdv(store.get('exoid_adv')==='1');
   document.getElementById('btnAdv').onclick=()=>setAdv(!document.body.classList.contains('adv'));
   // equipment selects
-  const sp=document.getElementById('selPanel'); sp.innerHTML=CATALOG.panels.map(p=>`<option value="${p.id}">${p.brand} ${p.model}</option>`).join('');
-  const sb=document.getElementById('selBattery'); sb.innerHTML='<option value="auto">Auto (prefer Ubetter)</option>'+CATALOG.batteries.map(p=>`<option value="${p.id}">${p.brand} ${p.model}</option>`).join('');
-  const si=document.getElementById('selInverter'); si.innerHTML='<option value="auto">Auto (best fit per system type)</option>'+CATALOG.inverters.map(p=>`<option value="${p.id}">${p.brand} ${p.model} (${CAT_LABEL[p.type]})</option>`).join('');
+  fillEquipSelects();
   document.getElementById('addCat').innerHTML=Object.entries(LOAD_CATS).map(([k,c])=>`<option value="${k}">${c.name}</option>`).join('');
-  bindInputs(document);
+  bindInputs(document); fillUtilities();
   document.querySelectorAll('#segSys button').forEach(b=>b.onclick=()=>{S.sys=b.dataset.v; save(); renderSys();});
   document.querySelectorAll('#segMethod button').forEach(b=>b.onclick=()=>{S.method=b.dataset.v; save(); renderMethod();});
   document.getElementById('btnAddLoad').onclick=()=>{ S.sched.loads.push(newLoad(document.getElementById('addCat').value)); save(); renderLoads(); };
@@ -742,7 +779,22 @@ function init(){
   document.getElementById('btnResetSettings').onclick=()=>{ const pb=S.set.preparedBy; S.set=JSON.parse(JSON.stringify(DEFAULT_SET)); S.set.preparedBy=pb; save(); renderAll(); };
   renderAll();
 }
-function confirmInline(){ return true; } // no blocking dialogs inside the embed
+function confirmInline(){ return true; }
+function fillEquipSelects(){
+  const sp=document.getElementById('selPanel'); sp.innerHTML=CATALOG.panels.filter(isAvail).map(p=>`<option value="${p.id}">${esc(p.brand+' '+p.model)}</option>`).join('');
+  const sb=document.getElementById('selBattery'); sb.innerHTML='<option value="auto">Auto (prefer Ubetter)</option>'+CATALOG.batteries.filter(isAvail).map(p=>`<option value="${p.id}">${esc(p.brand+' '+p.model)}</option>`).join('');
+  const si=document.getElementById('selInverter'); si.innerHTML='<option value="auto">Auto (best fit per system type)</option>'+CATALOG.inverters.filter(isAvail).map(p=>`<option value="${p.id}">${esc(p.brand+' '+p.model)} (${CAT_LABEL[p.type]})</option>`).join('');
+  [['selPanel','set.panel'],['selBattery','set.battery'],['selInverter','set.inverter']].forEach(([id,k])=>{ const el=document.getElementById(id), v=getK(k); if([...el.options].some(o=>o.value===v)) el.value=v; else { el.selectedIndex=0; setK(k, el.value); } });
+}
+function fillUtilities(){
+  const sel=document.getElementById('selUtil'); sel.innerHTML=UTILITIES.map(u=>`<option value="${u.id}">${u.name}${u.rate?` — ₱${u.rate.toFixed(2)}/kWh`:''}</option>`).join('');
+  sel.value=S.set.utility||'meralco';
+  const note=()=>{ const u=UTILITIES.find(x=>x.id===sel.value); document.getElementById('utilNote').innerHTML = u&&u.rate ? `Residential rate, ${u.asOf}. You can still type over it.` : 'Type the rate from the client\'s latest bill (total ÷ kWh).'; };
+  sel.onchange=()=>{ S.set.utility=sel.value; const u=UTILITIES.find(x=>x.id===sel.value);
+    if(u&&u.rate){ S.set.rate=u.rate; document.querySelectorAll('[data-k="set.rate"]').forEach(i=>i.value=u.rate); } else document.getElementById('rateInput').focus();
+    save(); note(); };
+  note();
+} // no blocking dialogs inside the embed
 function setAdv(on){ document.body.classList.toggle('adv',on); const b=document.getElementById('btnAdv'); if(b) b.classList.toggle('on',on); store.set('exoid_adv',on?'1':'0'); }
 function updateAdvCount(){ const c=document.getElementById('advCnt'); const n=LAST?(LAST.warnings.length):0; c.textContent=n; c.classList.toggle('hidden',!n); c.title=n+' installer warning(s)'; }
 function showTab(t){ document.querySelectorAll('nav.tabs button').forEach(b=>b.classList.toggle('on',b.dataset.tab===t));
@@ -757,19 +809,21 @@ function bindInputs(root){
 function renderAll(){ const ms=document.getElementById('mailStatus'); if(ms) ms.innerHTML=(S.set.webhook||store.sget('exoid_mail'))?'✅ Automatic mailer is active on this device.':'Automatic mailer not configured.'; bindInputs(document); renderSys(); renderMethod(); renderHist(); renderLoads(); renderCustomPanel(); renderCatalog(); }
 function renderSys(){
   document.querySelectorAll('#segSys button').forEach(b=>b.classList.toggle('on',b.dataset.v===S.sys));
-  const hint={hybrid:'Grid-connected with battery backup. Solar runs the house in the day, charges the battery, and can export to the grid (net-metering). During an outage the battery carries the <b>backed-up</b> loads. Inverter: Growatt SPM series.',
-    offgrid:'No grid connection (or the grid only charges the battery). Solar and battery must carry <b>all</b> loads, so this needs a bigger array and battery. Inverter: Growatt SPF series, with a built-in transfer switch.',
-    gridtie:'Lowest cost, fastest payback. No battery, so there is <b>no power during outages</b>. Excess solar is exported under net-metering. Inverter: Growatt MIN TL-X series.'}[S.sys];
+  const hint={hybrid:'Grid-connected with battery backup. Solar runs the house in the day, charges the battery, and can export to the grid if net metering is on. During an outage the battery carries the <b>backed-up</b> loads. Inverter: Growatt SPM or SPE series.',
+    offgrid:'No grid connection (or the grid only charges the battery). Solar and battery must carry <b>all</b> loads, so this needs a bigger array and battery. Inverter: Growatt SPF (or SPE for bigger loads).',
+    gridtie:'Lowest cost, fastest payback. No battery, so there is <b>no power during outages</b>. With net metering, excess solar is credited to the bill; without it, the inverter limits export to zero. Inverter: Growatt MIN TL-X series.'}[S.sys];
   document.getElementById('sysHint').innerHTML=hint;
   const o=document.getElementById('sysOpts');
   if(S.sys==='hybrid') o.innerHTML=`
     <div><label>Solar offset target (% of consumption)</label><input type="number" data-k="hybOffset"></div>
     <div><label>Battery sized to cover</label><select data-k="hyb.basis" id="hybBasis"><option value="night">Night-time usage of backed-up loads</option><option value="hours">Outage hours × backup load</option></select></div>
     <div class="hb"><label>Outage hours to cover</label><input type="number" data-k="hyb.outageH"></div>
-    <div class="hb"><label>Average backup load during outage (kW)</label><input type="number" step="0.1" data-k="hyb.backupKW" placeholder="auto"></div>`;
+    <div class="hb"><label>Average backup load during outage (kW)</label><input type="number" step="0.1" data-k="hyb.backupKW" placeholder="auto"></div>
+    <div><label>Net metering</label><select data-k="netMeter"><option value="yes">Yes — export credited (+${peso(num(S.set.nmFee,50000))} application)</option><option value="no">No — zero export</option></select></div>`;
   else if(S.sys==='offgrid') o.innerHTML=`<div><label>Days of autonomy (battery)</label><input type="number" step="0.5" min="0.5" data-k="off.autonomy"></div>
     <div style="grid-column:span 3" class="small">1 day = the battery holds one full day of consumption, for cloudy days and nights. Use 1.5–2 for critical sites.</div>`;
-  else o.innerHTML=`<div><label>Solar offset target (% of consumption)</label><input type="number" data-k="gt.offset"></div>`;
+  else o.innerHTML=`<div><label>Solar offset target (% of consumption)</label><input type="number" data-k="gt.offset"></div>
+    <div><label>Net metering</label><select data-k="netMeter"><option value="yes">Yes — export credited (+${peso(num(S.set.nmFee,50000))} application)</option><option value="no">No — zero export</option></select></div>`;
   bindInputs(o);
   const hb=document.getElementById('hybBasis'); if(hb){ const f=()=>o.querySelectorAll('.hb').forEach(x=>x.style.opacity=S.hyb.basis==='hours'?1:.45); hb.addEventListener('change',f); f(); }
 }
@@ -821,12 +875,96 @@ function renderCustomPanel(){ const c=document.getElementById('customPanel');
   c.innerHTML=[['wp','Pmax (W)'],['voc','Voc (V)'],['vmp','Vmp (V)'],['isc','Isc (A)'],['imp','Imp (A)'],['tVoc','Temp. coeff. Voc (%/°C)']].map(([k,l])=>`<div><label>${l}</label><input type="number" step="0.01" data-k="set.custom.${k}"></div>`).join('');
   bindInputs(c); }
 function renderCatalog(){
-  const row=(x,specs)=>`<tr><td><div class="imgslot">${x.img?`<img src="${x.img}" alt="">`:'photo<br>slot'}</div></td><td><b>${x.brand} ${x.model}</b> ${x.verify?'<span class="pill v" title="'+x.verify.replace(/"/g,'')+'">verify</span>':''}<div class="small">${specs}</div>${x.verify?`<div class="small" style="color:var(--warn)">${x.verify}</div>`:''}</td><td>${x.url?`<a href="${x.url}" target="_blank" rel="noopener">Datasheet</a>`:''}</td></tr>`;
-  const inv=['hybrid','offgrid','gridtie'].map(t=>`<h3 style="margin-top:14px">${CAT_LABEL[t]} inverters</h3><table>${CATALOG.inverters.filter(i=>i.type===t).map(i=>row(i,
-    `${i.kw} kW · max PV ${i.maxPV/1000} kWp · DC max ${i.vdcMax} V · MPPT ${i.mpptMin}–${i.mpptMax} V · ${i.mppt.length} MPPT (${i.mppt.join('/')} A)${i.surge>1?' · surge '+(i.kw*i.surge)+' kVA':''}${i.type!=='gridtie'?' · 48 V battery':''} · parallel up to ${i.parallel}`)).join('')}</table>`).join('');
-  const bat=`<h3 style="margin-top:14px">Batteries</h3><table>${CATALOG.batteries.map(b=>row(b,`${b.v} V · ${b.ah} Ah · ${b.kwh} kWh · max ${b.maxI} A · up to ${b.parallel} in parallel · LiFePO4`)).join('')}</table>`;
-  const pan=`<h3 style="margin-top:14px">Solar panels</h3><table>${CATALOG.panels.map(p=>row(p,`${p.wp} W · Voc ${p.voc} V · Vmp ${p.vmp} V · Isc ${p.isc} A · Imp ${p.imp} A · Voc coeff ${p.tVoc}%/°C ${p.size?'· '+p.size:''}`)).join('')}</table>`;
-  document.getElementById('catalogView').innerHTML=inv+bat+pan;
+  const btns=(x,kind)=>`<td class="catbtns"><button class="btn sec sm" data-edit="${x.id}" data-kind="${kind}">Edit</button>
+      <button class="btn ghost sm" data-avail="${x.id}">${isAvail(x)?'Mark unavailable':'Mark available'}</button>
+      ${x.builtin? (CAT_EDITS.over[x.id]?`<button class="btn ghost sm" data-reset="${x.id}">Reset</button>`:'') : `<button class="btn ghost sm" data-del="${x.id}">Delete</button>`}</td>`;
+  const row=(x,kind,specs)=>`<tr class="${isAvail(x)?'':'catrow-off'}"><td><div class="imgslot">${x.img?`<img src="${x.img}" alt="">`:'photo<br>slot'}</div></td><td><b>${esc(x.brand)} ${esc(x.model)}</b> ${x.builtin?'':'<span class="pill">added</span>'} ${!isAvail(x)?'<span class="pill">unavailable</span>':''} ${x.verify?'<span class="pill v">verify</span>':''}<div class="small">${specs}</div>${x.verify?`<div class="small" style="color:var(--warn)">${esc(x.verify)}</div>`:''}${x.url?`<div class="small"><a href="${esc(x.url)}" target="_blank" rel="noopener">Datasheet</a></div>`:''}</td>${btns(x,kind)}</tr>`;
+  const invSpec=i=>`${i.kw} kW · max PV ${i.maxPV/1000} kWp · DC max ${i.vdcMax} V · MPPT ${i.mpptMin}–${i.mpptMax} V · ${i.mppt.length} MPPT (${i.mppt.join('/')} A)${i.surge>1?' · surge '+(i.kw*i.surge)+' kVA':''}${i.type!=='gridtie'?' · 48 V battery':''}${i.alsoOffgrid?' · also off-grid':''} · parallel up to ${i.parallel}`;
+  const inv=['hybrid','offgrid','gridtie'].map(t=>`<h3 style="margin-top:14px">${CAT_LABEL[t]} inverters</h3><table>${CATALOG.inverters.filter(i=>i.type===t).map(i=>row(i,'inverters',invSpec(i))).join('')}</table>`).join('');
+  const bat=`<h3 style="margin-top:14px">Batteries</h3><table>${CATALOG.batteries.map(b=>row(b,'batteries',`${b.v} V · ${b.ah} Ah · ${b.kwh} kWh · max ${b.maxI} A · up to ${b.parallel} in parallel`)).join('')}</table>`;
+  const pan=`<h3 style="margin-top:14px">Solar panels</h3><table>${CATALOG.panels.map(p=>row(p,'panels',`${p.wp} W · Voc ${p.voc} V · Vmp ${p.vmp} V · Isc ${p.isc} A · Imp ${p.imp} A · Voc coeff ${p.tVoc}%/°C ${p.size?'· '+esc(p.size):''}`)).join('')}</table>`;
+  const v=document.getElementById('catalogView');
+  v.innerHTML=`<div class="row" style="margin-bottom:6px"><button class="btn sm" data-add="inverters">+ Add inverter</button><button class="btn sm" data-add="batteries">+ Add battery</button><button class="btn sm" data-add="panels">+ Add solar panel</button><span class="small" id="catStatus">${catStatusText()}</span></div>`+inv+bat+pan;
+  v.querySelectorAll('[data-edit]').forEach(b=>b.onclick=()=>openCatEditor(b.dataset.kind, CATALOG[b.dataset.kind].find(x=>x.id===b.dataset.edit)));
+  v.querySelectorAll('[data-add]').forEach(b=>b.onclick=()=>openCatEditor(b.dataset.add, null));
+  v.querySelectorAll('[data-avail]').forEach(b=>b.onclick=()=>{ const x=findCat(b.dataset.avail); catChange(e=>{ e.over[x.id]=Object.assign({},e.over[x.id]||{},{available:!isAvail(x)}); }); });
+  v.querySelectorAll('[data-reset]').forEach(b=>b.onclick=()=>catChange(e=>{ delete e.over[b.dataset.reset]; }));
+  v.querySelectorAll('[data-del]').forEach(b=>b.onclick=()=>catChange(e=>{ e.added=e.added.filter(a=>a.id!==b.dataset.del); delete e.over[b.dataset.del]; }));
+}
+function findCat(id){ for(const k of ['inverters','batteries','panels']){ const x=CATALOG[k].find(i=>i.id===id); if(x) return x; } return null; }
+let CAT_SHARED=null; // true = synced with the shared file, false = this device only
+function catStatusText(){ return CAT_SHARED===true?'✅ Changes are shared with all installers.':CAT_SHARED===false?'⚠ Changes are saved on this device only. Update the Apps Script to share them.':'Loading shared catalog…'; }
+function mailerURL(){ return S.set.webhook || store.sget('exoid_mail') || ''; }
+async function loadSharedCatalog(){
+  const u=mailerURL(); if(!u){ CAT_SHARED=false; return; }
+  try{ const r=await fetch(u+(u.includes('?')?'&':'?')+'action=catalog'); const j=await r.json();
+    if(j && j.ok){ if(j.edits && j.edits.over) CAT_EDITS=j.edits; CAT_SHARED=true; applyCatalog(false); } else CAT_SHARED=false;
+  }catch(e){ CAT_SHARED=false; }
+  const st=document.getElementById('catStatus'); if(st) st.textContent=catStatusText();
+}
+function applyCatalog(persist){ CATALOG=buildCatalog(); try{ localStorage.setItem('exoid_catalog_edits', JSON.stringify(CAT_EDITS)); }catch(e){} fillEquipSelects(); renderCatalog(); }
+async function catChange(mutator){
+  // re-read the shared copy first so two installers editing don't overwrite each other
+  const u=mailerURL();
+  if(u){ try{ const r=await fetch(u+(u.includes('?')?'&':'?')+'action=catalog'); const j=await r.json(); if(j&&j.ok&&j.edits&&j.edits.over) CAT_EDITS=j.edits; }catch(e){} }
+  mutator(CAT_EDITS); applyCatalog(true);
+  if(u){ try{ const r=await fetch(u,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'saveCatalog',edits:CAT_EDITS})}); const j=await r.json(); CAT_SHARED=!!(j&&j.ok); }catch(e){ CAT_SHARED=false; } }
+  else CAT_SHARED=false;
+  const st=document.getElementById('catStatus'); if(st) st.textContent=catStatusText();
+}
+const CAT_FIELDS = {
+  inverters:[['brand','Brand','text'],['model','Model','text'],['type','Type','type'],['kw','Rated power (kW)','num'],['surge','Surge multiplier (e.g. 2 = 2× for 5 s)','num'],['maxPV','Max PV input (W)','num'],
+    ['vdcMax','Max DC voltage (V)','num'],['mpptMin','MPPT min (V)','num'],['mpptMax','MPPT max (V)','num'],['startV','Start voltage (V)','num'],['mppt','Max current per MPPT (A), comma-separated, e.g. 16,16','list'],
+    ['battI','Max battery discharge current (A)','num'],['chargeA','Max solar charge current (A, off-grid)','num'],['parallel','Max units in parallel','num'],['alsoOffgrid','Can also run off-grid?','bool'],['url','Datasheet link','text'],['verify','Notes / to verify','text']],
+  batteries:[['brand','Brand','text'],['model','Model','text'],['v','Nominal voltage (V)','num'],['ah','Capacity (Ah)','num'],['kwh','Energy (kWh, blank = V × Ah)','num'],['maxI','Max continuous current (A)','num'],['parallel','Max units in parallel','num'],['url','Datasheet link','text'],['verify','Notes / to verify','text']],
+  panels:[['brand','Brand','text'],['model','Model','text'],['wp','Power (W)','num'],['voc','Voc (V)','num'],['vmp','Vmp (V)','num'],['isc','Isc (A)','num'],['imp','Imp (A)','num'],['tVoc','Voc temp. coefficient (%/°C, negative)','num'],['size','Dimensions','text'],['area','Area (m²)','num'],['url','Datasheet link','text'],['verify','Notes / to verify','text']]
+};
+const CAT_REQUIRED = {inverters:['brand','model','kw','maxPV','vdcMax','mpptMin','mpptMax','mppt'], batteries:['brand','model','v','ah','maxI'], panels:['brand','model','wp','voc','vmp','isc','imp']};
+function openCatEditor(kind, item){
+  const isNew=!item; const x=item?Object.assign({},item):{kind, type:'hybrid', surge:1, parallel:6, tVoc:-0.27, v:51.2, img:''};
+  let img=x.img||'';
+  const val=(f)=>{ const v=x[f[0]]; if(f[2]==='list') return Array.isArray(v)?v.join(','):(v||''); return v===undefined||v===null?'':v; };
+  const field=f=> f[2]==='type' ? `<div><label>${f[1]}</label><select data-f="type"><option value="hybrid">Hybrid</option><option value="offgrid">Off-grid</option><option value="gridtie">Grid-tie</option></select></div>`
+    : f[2]==='bool' ? `<div><label>${f[1]}</label><select data-f="${f[0]}"><option value="">No</option><option value="1">Yes</option></select></div>`
+    : `<div ${f[0]==='verify'||f[0]==='url'?'style="grid-column:span 2"':''}><label>${f[1]}${CAT_REQUIRED[kind].includes(f[0])?' *':''}</label><input data-f="${f[0]}" ${f[2]==='num'?'type="number" step="any"':''} value="${esc(String(val(f)))}"></div>`;
+  const m=document.createElement('div'); m.id='catModal';
+  m.innerHTML=`<div class="box"><h2>${isNew?'Add':'Edit'} ${{inverters:'inverter',batteries:'battery',panels:'solar panel'}[kind]}</h2>
+    <div class="row" style="align-items:flex-start;margin-bottom:12px"><div class="imgslot" id="ceImg" style="width:96px;height:96px">${img?`<img src="${img}">`:'no photo'}</div>
+      <div><label>Product photo</label><input type="file" accept="image/*" id="ceFile"><div class="small">Resized automatically. Use a photo from your distributor or your own.</div><button class="btn ghost sm" id="ceNoImg" style="margin-top:6px">Remove photo</button></div></div>
+    <div class="grid g2">${CAT_FIELDS[kind].map(field).join('')}</div>
+    <div class="err" id="ceErr"></div>
+    <div class="row" style="margin-top:12px"><button class="btn" id="ceSave">Save</button><button class="btn ghost" id="ceCancel">Cancel</button>${!isNew&&x.builtin?'<span class="small">Built-in model: your changes are kept separately, and you can Reset them anytime.</span>':''}</div></div>`;
+  document.body.appendChild(m);
+  const tsel=m.querySelector('[data-f="type"]'); if(tsel) tsel.value=x.type||'hybrid';
+  const osel=m.querySelector('[data-f="alsoOffgrid"]'); if(osel) osel.value=x.alsoOffgrid?'1':'';
+  const close=()=>m.remove();
+  m.querySelector('#ceCancel').onclick=close; m.onclick=e=>{ if(e.target===m) close(); };
+  m.querySelector('#ceNoImg').onclick=()=>{ img=''; m.querySelector('#ceImg').innerHTML='no photo'; };
+  m.querySelector('#ceFile').onchange=e=>{ const f=e.target.files[0]; if(!f) return; const rd=new FileReader();
+    rd.onload=()=>{ const im=new Image(); im.onload=()=>{ const max=480, k=Math.min(1,max/Math.max(im.width,im.height)); const c=document.createElement('canvas'); c.width=Math.round(im.width*k); c.height=Math.round(im.height*k);
+      const ctx=c.getContext('2d'); ctx.fillStyle='#fff'; ctx.fillRect(0,0,c.width,c.height); ctx.drawImage(im,0,0,c.width,c.height); img=c.toDataURL('image/jpeg',0.82); m.querySelector('#ceImg').innerHTML=`<img src="${img}">`; }; im.src=rd.result; };
+    rd.readAsDataURL(f); };
+  m.querySelector('#ceSave').onclick=()=>{
+    const out={};
+    CAT_FIELDS[kind].forEach(f=>{ const el=m.querySelector(`[data-f="${f[0]}"]`); let v=el.value.trim();
+      if(f[2]==='num') v = v===''?undefined:parseFloat(v);
+      else if(f[2]==='list') v = v.split(/[,\/ ]+/).map(parseFloat).filter(n=>n>0);
+      else if(f[2]==='bool') v = !!v;
+      out[f[0]]=v; });
+    const miss=CAT_REQUIRED[kind].filter(k=>out[k]===undefined||out[k]===''||(Array.isArray(out[k])&&!out[k].length)||(typeof out[k]==='number'&&isNaN(out[k])));
+    if(miss.length){ m.querySelector('#ceErr').textContent='Please fill in: '+miss.map(k=>CAT_FIELDS[kind].find(f=>f[0]===k)[1]).join(', '); return; }
+    if(kind==='batteries' && !out.kwh) out.kwh=Math.round(out.v*out.ah/10)/100;
+    if(kind==='panels' && !out.area) out.area=r2(out.wp/1000/0.215);
+    if(kind==='inverters'){ if(!out.startV) out.startV=out.mpptMin; if(!out.surge) out.surge=1; if(!out.parallel) out.parallel=1; }
+    if(kind==='batteries' && !out.parallel) out.parallel=1;
+    out.img=img;
+    catChange(e=>{
+      if(isNew){ out.id='U'+Date.now().toString(36); out.kind=kind; e.added.push(out); }
+      else if(item.builtin){ e.over[item.id]=Object.assign({}, e.over[item.id]||{}, out); }
+      else { const i=e.added.findIndex(a=>a.id===item.id); if(i>=0) e.added[i]=Object.assign({}, e.added[i], out); }
+    });
+    close();
+  };
 }
 
 /* ---------------- Results rendering ---------------- */
@@ -902,7 +1040,7 @@ function renderResults(R){
 
     <h3 style="margin-top:18px">Investment &amp; savings</h3>
     <div class="kpis">
-      <div class="kpi"><div class="v">${peso(f.price)}</div><div class="l">Estimated system price (${peso(set.pricePerKW)}/kWp${R.bat&&num(set.batAdder)>0?' + battery':''})</div></div>
+      <div class="kpi"><div class="v">${peso(f.price)}</div><div class="l">Estimated system price (${peso(set.pricePerKW)}/kWp${R.bat&&num(set.batAdder)>0?' + battery':''}${f.netOn?' + '+peso(f.nmFee)+' net metering':''})</div></div>
       <div class="kpi"><div class="v">${peso(f.monthly1)}</div><div class="l">Avg. monthly savings, year 1</div></div>
       <div class="kpi"><div class="v">${pb}</div><div class="l">Simple payback</div></div>
       <div class="kpi"><div class="v">${peso(f.net)}</div><div class="l">Net savings over ${set.years} years</div></div>
@@ -931,7 +1069,7 @@ function renderResults(R){
     <ul class="small" style="margin:4px 0 0 18px;padding:0">
       ${S.method==='schedule'?'<li>Load energy = watts × qty × hours on × energy % (inverter aircons/fridges use less energy than non-inverter units; editable per load).</li>':''}<li>Peak sun hours ${set.psh} h/day, performance ratio ${set.pr}. Daily consumption ${r1(L.daily)} kWh, of which ${Math.round(L.dayShare*100)}% is daytime.</li>
       ${R.bat?`<li>Battery usable depth of discharge ${set.dod}%, round-trip efficiency ${set.eff}%. Sized for ${R.sys==='offgrid'?S.off.autonomy+' day(s) of autonomy':(S.hyb.basis==='night'?'night-time use of backed-up loads':S.hyb.outageH+' h outage at '+r1(R.backupKWused)+' kW')} (needs ${r1(R.batUsableReq)} kWh usable).</li>`:''}
-      ${R.sys!=='offgrid'?'<li>Grid-tie and hybrid systems need a distribution utility net-metering application (ERC rules, up to 100 kW) and an electrical permit. Install according to the Philippine Electrical Code and the manufacturers\' manuals.</li>':'<li>Off-grid systems need an electrical permit. Install according to the Philippine Electrical Code and the manufacturers\' manuals.</li>'}
+      ${R.sys!=='offgrid'?(f.netOn?'<li>Net metering: included. The price covers the '+peso(f.nmFee)+' net-metering application with the distribution utility (ERC rules, up to 100 kW).</li>':'<li>Net metering: not included. The inverter is set to zero export, so surplus solar is not credited.</li>')+'<li>Grid-connected systems need an electrical permit. Install according to the Philippine Electrical Code and the manufacturers\' manuals.</li>':'<li>Off-grid systems need an electrical permit. Install according to the Philippine Electrical Code and the manufacturers\' manuals.</li>'}
       <li><b>Estimated price only, final price after full inspection.</b> This is a preliminary estimate. Final quantities, layout and price are confirmed after a site survey (roof condition, shading, orientation, panel board).</li>
     </ul>
   </div>`;
@@ -1001,7 +1139,7 @@ function quoteText(R){
   const basis = S.method==='history' ? `your average consumption of about ${Math.round(L.monthly).toLocaleString()} kWh per month` : `your list of appliances (about ${Math.round(L.monthly).toLocaleString()} kWh per month)`;
   const perk = {hybrid:'• Battery backup keeps your essential appliances running during brownouts',
                 offgrid:'• Full energy independence — your home runs on solar and battery power, with no electric bill',
-                gridtie:'• Excess solar energy is exported to the grid and credited to your bill through net-metering'}[R.sys];
+                gridtie: f.netOn?'• Excess solar energy is exported to the grid and credited to your bill through net metering':'• The lowest-cost way to cut your daytime electricity bill'}[R.sys];
   const sig = [set.sigName || set.preparedBy || 'Exoid Robotics Team', set.sigTitle, 'Exoid Robotics',
                set.sigPhone ? 'Mobile: '+set.sigPhone : '', set.sigEmail ? 'Email: '+set.sigEmail : '', 'www.exoidrobotics.com'].filter(Boolean);
   const L1=[
@@ -1013,7 +1151,7 @@ function quoteText(R){
     `• Estimated net savings over ${yrs} years: ${peso(f.net)}`,
     `• Solar covers about ${Math.round(f.offset*100)}% of your electricity use`,
     perk,
-    ``, `YOUR PROPOSED SYSTEM — ${peso(f.price)} (estimated)`,
+    ``, `YOUR PROPOSED SYSTEM — ${peso(f.price)} (estimated${f.netOn?', including net-metering application':''})`,
     `• ${R.panels} × ${R.panel.brand} ${R.panel.model.replace(/\s*\(.*\)/,'')} solar panels (${R.panel.wp} W each)`,
     `• ${R.invN} × ${R.inv.brand} ${R.inv.model} ${CAT_LABEL[R.sys].toLowerCase()} inverter${R.invN>1?'s':''} (${r1(R.invN*R.inv.kw)} kW${R.invN>1?' total':''})`];
   if(R.bat) L1.push(`• ${R.bat.n} × ${R.bat.b.brand} ${R.bat.b.kwh} kWh LiFePO4 batter${R.bat.n>1?'ies':'y'} (${r1(R.bat.kwh)} kWh total storage)`);
@@ -1022,7 +1160,7 @@ function quoteText(R){
     ``, `NEXT STEPS`,
     `1. Reply to this email or call us to schedule a site survey.`,
     `2. We'll confirm the final design and price after checking your roof, shading and electrical panel.`,
-    `3. Once approved, we schedule the installation${R.sys!=='offgrid'?' and prepare the net-metering requirements with your utility':''}.`,
+    `3. Once approved, we schedule the installation${f.netOn?' and prepare the net-metering requirements with your utility':''}.`,
     ``, `Your full proposal is attached as a PDF.`, ``, `Estimated price only, final price after full inspection. This quote is based on the information you provided; final quantities and price will be confirmed after the site survey.`,
     ``, `We'd be glad to answer any questions${first?', '+first:''}.`,
     ``, `Warm regards,`, ``, ...sig);

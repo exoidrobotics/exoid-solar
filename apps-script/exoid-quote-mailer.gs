@@ -1,7 +1,8 @@
 /**
  * Exoid Robotics – Solar quote mailer (Google Apps Script)
  * Sends each quote from the calculator to the client (with the PDF proposal attached), CCs the office,
- * and logs it to the "Quotes" tab of the Google Sheet this script is attached to.
+ * logs it to the "Quotes" tab of the Google Sheet this script is attached to, and stores the
+ * shared equipment catalog (installer edits + product photos) as a file in your Google Drive.
  *
  * SETUP (about 5 minutes, signed in as the account that should send the emails):
  * 1. Create a Google Sheet, e.g. "Exoid Solar Quotes".
@@ -16,8 +17,38 @@
 const CC_ALWAYS = 'mgb@exoidrobotics.com';
 const SHEET_NAME = 'Quotes';
 
+const CATALOG_FILE = 'Exoid Solar Catalog (do not delete).json';
+
+function json_(o) { return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON); }
+
+function catalogFile_() {
+  const props = PropertiesService.getScriptProperties();
+  const id = props.getProperty('CATALOG_FILE_ID');
+  if (id) { try { return DriveApp.getFileById(id); } catch (err) {} }
+  return null;
+}
+
+// GET ?action=catalog → shared equipment catalog edits (models added/edited by installers, photos included)
+function doGet(e) {
+  if (e && e.parameter && e.parameter.action === 'catalog') {
+    const f = catalogFile_();
+    return json_({ ok: true, edits: f ? JSON.parse(f.getBlob().getDataAsString() || 'null') : null });
+  }
+  return json_({ ok: true });
+}
+
 function doPost(e) {
   const d = JSON.parse(e.postData.contents);
+  if (d.action === 'saveCatalog') {
+    const text = JSON.stringify(d.edits || { over: {}, added: [] });
+    let f = catalogFile_();
+    if (f) f.setContent(text);
+    else {
+      f = DriveApp.createFile(CATALOG_FILE, text, MimeType.PLAIN_TEXT);
+      PropertiesService.getScriptProperties().setProperty('CATALOG_FILE_ID', f.getId());
+    }
+    return json_({ ok: true });
+  }
   if (!d.to || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(d.to)) {
     return ContentService.createTextOutput('missing client email');
   }
