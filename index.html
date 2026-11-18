@@ -126,7 +126,9 @@ tr.grand td{font-weight:800;font-size:15.5px;border-top:2px solid var(--cell);bo
 .ebar{display:flex;height:14px;border-radius:7px;overflow:hidden;background:#EEF2F6}
 .ebar span{display:block;height:100%}
 .e-sun{background:#F2B13A}.e-bat{background:#2F8F5B}.e-exp{background:#9FB3C8}.e-grid{background:#5B6B7C}
-.qtyin{width:70px;text-align:right;font-size:18px;font-weight:700;padding:4px 6px;border:1px solid var(--line);border-radius:6px}
+.modelsel{max-width:100%;margin:2px 0;padding:5px 8px;font-weight:500}
+@media print{.modelsel{border:0;padding:0;appearance:none;-webkit-appearance:none}}
+input.qtyin{width:84px;text-align:right;font-size:18px;font-weight:700;padding:4px 6px;border:1px solid var(--line);border-radius:6px}
 @media(max-width:820px){.ebal{grid-template-columns:1fr}}
 @media print{.qtyin{border:0;padding:0}}
 /* catalog */
@@ -197,7 +199,7 @@ body.adv .hideadv{display:none}
     <svg width="26" height="26" viewBox="0 0 34 34" aria-hidden="true"><circle cx="17" cy="17" r="7" fill="#f2a900"/><g stroke="#f2a900" stroke-width="2.4" stroke-linecap="round"><path d="M17 2v5M17 27v5M2 17h5M27 17h5M6.4 6.4l3.5 3.5M24.1 24.1l3.5 3.5M6.4 27.6l3.5-3.5M24.1 9.9l3.5-3.5"/></g></svg>
     <div class="title">Exoid <span>Solar</span></div>
     <div class="sp"></div>
-    <div class="who"><span id="whoLbl"></span><div style="font-size:10px;opacity:.6">Version 2026-11-18 18:10</div></div>
+    <div class="who"><span id="whoLbl"></span><div style="font-size:10px;opacity:.6">Version 2026-11-18 18:25</div></div>
     <button class="btn ghost sm" id="btnFull" title="Use the whole screen (Esc to exit)">⛶ Full screen</button>
     <button class="btn ghost sm" id="btnAdv" title="Show or hide technical details (wiring, protection, string voltages, installer notes)">⚙ Advanced<span class="cnt hidden" id="advCnt"></span></button>
     <button class="btn ghost sm" id="btnNew">+ New proposal</button>
@@ -1322,7 +1324,13 @@ function renderResults(R){
   eq.push({key:'panels',img:p.img,item:'Solar panels', model:`${p.brand} ${p.model}`, spec:`${p.wp} W each · Voc ${p.voc} V · Isc ${p.isc} A`, qty:R.panels, url:p.url});
   eq.push({key:'inv',img:inv.img,item:CAT_LABEL[inv.type]+' inverter', model:`${inv.brand} ${inv.model}`, spec:`${inv.kw} kW, 230 V single-phase · ${inv.mppt.length} MPPT · max PV ${inv.maxPV/1000} kWp${inv.type!=='gridtie'?' · 48 V battery':''}`, qty:R.invN, url:inv.url});
   if(R.bat) eq.push({key:'bat',img:R.bat.b.img,item:'Battery (LiFePO4)', model:`${R.bat.b.brand} ${R.bat.b.model}`, spec:`${R.bat.b.kwh} kWh each · ${R.bat.b.v} V · total ${r2(R.bat.kwh)} kWh (${r1(R.batUsable)} kWh usable)`, qty:R.bat.n, url:R.bat.b.url});
-  const eqRows=eq.map(e=>`<tr><td><div class="imgslot">${e.img?`<img src="${e.img}" alt="">`:'photo'}</div></td><td><b>${e.item}</b><div>${e.model}</div><div class="small">${e.spec}</div></td><td class="num"><input type="number" min="${e.key==='bat'?0:1}" class="qtyin" data-q="${e.key}" value="${e.qty}" title="Change the quantity to update the whole proposal"></td><td class="noprint">${e.url?`<a href="${e.url}" target="_blank" rel="noopener">Datasheet</a>`:''}</td></tr>`).join('');
+  const msel=(key,cur)=>{ const lab=x=>esc(x.brand+' '+x.model.replace(/\s*\(.*\)/,''));
+    let opts='';
+    if(key==='inv') opts=['hybrid','offgrid','gridtie'].map(t=>`<optgroup label="${CAT_LABEL[t]} inverters">${CATALOG.inverters.filter(i=>i.type===t&&(isAvail(i)||i.id===cur)).map(i=>`<option value="${i.id}" ${i.id===cur?'selected':''}>${lab(i)} (${i.kw} kW)</option>`).join('')}</optgroup>`).join('');
+    else if(key==='panels') opts=CATALOG.panels.filter(x=>isAvail(x)||x.id===cur).map(x=>`<option value="${x.id}" ${x.id===cur?'selected':''}>${lab(x)}</option>`).join('');
+    else opts=CATALOG.batteries.filter(x=>isAvail(x)||x.id===cur).map(x=>`<option value="${x.id}" ${x.id===cur?'selected':''}>${lab(x)} (${x.kwh} kWh)</option>`).join('');
+    return `<select class="modelsel" data-m="${key}" title="Change the model to update the whole proposal">${opts}</select>`; };
+  const eqRows=eq.map(e=>`<tr><td><div class="imgslot">${e.img?`<img src="${e.img}" alt="">`:'photo'}</div></td><td><b>${e.item}</b><div>${msel(e.key, e.key==='inv'?inv.id:e.key==='panels'?p.id:R.bat.b.id)}</div><div class="small">${e.spec}</div></td><td class="num"><input type="number" min="${e.key==='bat'?0:1}" class="qtyin" data-q="${e.key}" value="${e.qty}" title="Change the quantity to update the whole proposal"></td><td class="noprint">${e.url?`<a href="${e.url}" target="_blank" rel="noopener">Datasheet</a>`:''}</td></tr>`).join('');
   // configuration text
   const mpptTxt = sd.perMppt.map((c,i)=>c?`MPPT ${i+1}: ${c} string${c>1?'s':''} × ${sd.mpptLen?sd.mpptLen[i]:sd.series} panels`:`MPPT ${i+1}: unused`).join(' · ');
   const strDesc = sd.uneven ? `${sd.strings} strings (${strList(sd).join(' + ')} panels) <b>in series</b>` : `${sd.strings} string${sd.strings>1?'s':''} × ${sd.series} panels <b>in series</b>`;
@@ -1369,7 +1377,7 @@ function renderResults(R){
 
     <h3 style="margin-top:18px">${R.custom?'Selected equipment':'Recommended equipment'}</h3>
     <table><thead><tr><th style="width:66px"></th><th>Item</th><th class="num">Qty</th><th class="noprint"></th></tr></thead><tbody>${eqRows}</tbody></table>
-    <div class="small noprint" style="margin-top:6px">Change a quantity above and the whole proposal (design checks, wiring, savings, price) updates. It then becomes a custom setup.</div>
+    <div class="small noprint" style="margin-top:6px">Change a model or quantity above and the whole proposal (design checks, wiring, savings, price) updates. It then becomes a custom setup.</div>
 
     <h3 style="margin-top:18px">Investment &amp; savings</h3>
     <div class="kpis">
@@ -1439,12 +1447,24 @@ function energyHTML(R,f){
   </div>`;
 }
 function wireQtyInputs(R){
-  document.querySelectorAll('#results .qtyin').forEach(inp=>inp.onchange=()=>{
-    const v=Math.max(+inp.min||0, Math.round(num(inp.value,0)));
-    Object.assign(S.custom,{sys:R.sys==='gridtie'?'':R.sys, inv:R.inv.id, invN:R.invN, panel:R.panel.id, panels:R.panels,
+  const base=()=>Object.assign(S.custom,{sys:R.sys==='gridtie'?'':R.sys, inv:R.inv.id, invN:R.invN, panel:R.panel.id, panels:R.panels,
       bat:R.bat?R.bat.b.id:(S.custom.bat||''), batN:R.bat?R.bat.n:0});
+  const go=msg=>{ S.mode='custom'; save(); try{ renderCustom(); }catch(e){} runCalc(); flash(msg); };
+  document.querySelectorAll('#results .qtyin').forEach(inp=>inp.onchange=()=>{
+    const v=Math.max(+inp.min||0, Math.round(num(inp.value,0))); base();
     if(inp.dataset.q==='panels') S.custom.panels=v; else if(inp.dataset.q==='inv') S.custom.invN=Math.max(1,v); else S.custom.batN=v;
-    S.mode='custom'; save(); try{ renderCustom(); }catch(e){} runCalc(); flash('Updated with your quantities (now a custom setup).');
+    go('Updated with your quantities (now a custom setup).');
+  });
+  document.querySelectorAll('#results .modelsel').forEach(sel=>sel.onchange=()=>{
+    base(); const m=sel.dataset.m;
+    if(m==='inv'){ const ni=CATALOG.inverters.find(i=>i.id===sel.value); S.custom.inv=sel.value;
+      if(ni){ if(ni.type==='gridtie') S.custom.sys=''; else if(ni.alsoOffgrid) S.custom.sys=(R.sys==='offgrid'?'offgrid':'hybrid'); else S.custom.sys=ni.type;
+        if(ni.type!=='gridtie' && !S.custom.batN){ const b=CATALOG.batteries.find(isAvail); if(b){ S.custom.bat=S.custom.bat||b.id; S.custom.batN=Math.max(1,Math.ceil((R.load.nightKWh||10)/(b.kwh*0.85))); } } } }
+    else if(m==='panels'){ const np=CATALOG.panels.find(x=>x.id===sel.value), op=R.panel; S.custom.panel=sel.value;
+      if(np&&op&&np.wp) S.custom.panels=Math.max(1,Math.round(R.kWp*1000/np.wp)); }   // keep roughly the same kWp
+    else { const nb=CATALOG.batteries.find(x=>x.id===sel.value); S.custom.bat=sel.value;
+      if(nb&&R.bat) S.custom.batN=Math.max(1,Math.ceil(R.bat.kwh/nb.kwh-0.05)); }   // keep roughly the same storage
+    go('Model changed. The proposal now uses your selection (custom setup).');
   });
 }
 function esc(s){ return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
@@ -1627,6 +1647,7 @@ async function makePdf(R){
   const CW=700;                                   // content width in CSS px (= 186 mm on A4 with 12 mm margins)
   const el=src.cloneNode(true);
   el.querySelectorAll('.tech,.noprint,.hideadv').forEach(n=>n.remove()); el.classList.add('pdfmode');
+  el.querySelectorAll('select.modelsel').forEach(sl=>{ const t=document.createElement('div'); t.textContent=(sl.options[sl.selectedIndex]||{}).text||''; sl.replaceWith(t); });
   el.querySelectorAll('input.qtyin').forEach(i=>{ const b=document.createElement('b'); b.textContent=i.value; b.style.fontSize='18px'; i.replaceWith(b); });   // client copy: no technical tables
   el.style.cssText='width:'+CW+'px;box-sizing:border-box;background:#fff;border:0;padding:0;margin:0;font-size:12.5px';
   el.querySelectorAll('.kpis:not(.module)').forEach(k=>k.style.gridTemplateColumns='repeat(3,1fr)');
