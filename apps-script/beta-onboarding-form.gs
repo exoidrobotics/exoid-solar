@@ -188,3 +188,11 @@ function updateAppLink() {
   FormApp.openById(PropertiesService.getScriptProperties().getProperty('FORM_ID')).setConfirmationMessage(confirmation_());
   Logger.log('Confirmation page now links to ' + APP_URL);
 }
+
+// Links the form's responses to the Beta testers spreadsheet (adds a "Form Responses 1" tab with every raw answer)
+function linkToSheet() {
+  const p = PropertiesService.getScriptProperties();
+  const form = FormApp.openById(p.getProperty('FORM_ID'));
+  form.setDestination(FormApp.DestinationType.SPREADSHEET, p.getProperty('SHEET_ID'));
+  Logger.log('Linked. Responses sheet: ' + SpreadsheetApp.openById(p.getProperty('SHEET_ID')).getUrl());
+}
