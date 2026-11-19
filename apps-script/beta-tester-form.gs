@@ -216,7 +216,7 @@ function readResponse_(r) {
     const t = ir.getItem().getTitle(), a = ir.getResponse();
     if (t === CITY_Q) city = a; else v[t] = Array.isArray(a) ? a.join('; ') : a;
   });
-  return [r.getTimestamp(), v[Q.company] || '', v[Q.contact] || '', r.getRespondentEmail() || '', (v[Q.mobile] || '').trim(),
+  return [r.getTimestamp(), v[Q.company] || '', v[Q.contact] || '', r.getRespondentEmail() || '', "'" + (v[Q.mobile] || '').trim(),
     v[Q.reg] || '', v[Q.bir] || '', v[Q.province] || '', city, v[Q.years] || '', v[Q.installs] || '', v[Q.revenue] || '',
     'New', '', r.getId()];
 }
@@ -227,8 +227,15 @@ function onApplication(e) {
   const ss = SpreadsheetApp.openById(props.getProperty('SHEET_ID'));
   const row = readResponse_(e.response);
   const sh = ss.getSheetByName('Applicants');
-  sh.appendRow(row);
-  try { ensureSmsHeader_(sh); smsForRow_(sh, sh.getLastRow()); } catch (err) {}
+  const lock = LockService.getScriptLock(); lock.waitLock(30000);   // two people applying at once can't mix up rows
+  try {
+    // never add or text the same response twice
+    const ids = sh.getLastRow() > 1 ? sh.getRange(2, 15, sh.getLastRow() - 1, 1).getValues().map(r => r[0]) : [];
+    if (ids.indexOf(row[14]) >= 0) return;
+    sh.appendRow(row);
+    const at = sh.getLastRow();
+    try { ensureSmsHeader_(sh); smsForRow_(sh, at); } catch (err) {}
+  } finally { lock.releaseLock(); }
   try {
     MailApp.sendEmail(Session.getEffectiveUser().getEmail(), 'New beta tester application: ' + row[1],
       'A new company applied for the Exoid Solar beta: ' + row[1] + '\n\nReview it in the Applicants sheet (team only):\n' + ss.getUrl());
@@ -241,10 +248,13 @@ function resyncApplicants() {
   const form = FormApp.openById(props.getProperty('FORM_ID'));
   const sh = SpreadsheetApp.openById(props.getProperty('SHEET_ID')).getSheetByName('Applicants');
   const old = {}; const last = sh.getLastRow();
-  if (last > 1) sh.getRange(2, 1, last - 1, HEADERS.length).getValues().forEach(r => { old[r[14]] = [r[12], r[13]]; });
-  const rows = form.getResponses().map(r => { const row = readResponse_(r); if (old[row[14]]) { row[12] = old[row[14]][0]; row[13] = old[row[14]][1]; } return row; });
-  if (last > 1) sh.getRange(2, 1, last - 1, HEADERS.length).clearContent();
-  if (rows.length) sh.getRange(2, 1, rows.length, HEADERS.length).setValues(rows);
+  // keeps Status, Notes and the SMS record attached to the right person (matched by Response ID)
+  if (last > 1) sh.getRange(2, 1, last - 1, SMS_COL).getValues().forEach(r => { old[r[14]] = [r[12], r[13], r[15]]; });
+  const rows = form.getResponses().map(r => { const row = readResponse_(r); const o = old[row[14]];
+    row.push(o ? o[2] : 'Not sent (added by resync)');   // never re-text on resync
+    if (o) { row[12] = o[0]; row[13] = o[1]; } return row; });
+  if (last > 1) sh.getRange(2, 1, last - 1, SMS_COL).clearContent();
+  if (rows.length) sh.getRange(2, 1, rows.length, SMS_COL).setValues(rows);
   Logger.log(rows.length + ' applicants');
 }
 
