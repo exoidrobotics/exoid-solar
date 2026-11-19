@@ -80,6 +80,18 @@ function doPost(e) {
       const name = String(d.pdfName || 'Solar Proposal.pdf').replace(/[\\\/:*?"<>|]/g, '').slice(0, 120);
       opts.attachments = [Utilities.newBlob(Utilities.base64Decode(d.pdfBase64), 'application/pdf', name)];
     }
+    // extra PDFs (e.g. the installation agreement sent with a final quote): up to 3, about 20 MB in total
+    if (Array.isArray(d.extraPdfs) && d.extraPdfs.length) {
+      let total = String(d.pdfBase64 || '').length;
+      opts.attachments = opts.attachments || [];
+      for (const x of d.extraPdfs.slice(0, 3)) {
+        if (!x || !x.base64) continue;
+        total += String(x.base64).length;
+        if (total > 20 * 1024 * 1024) return json_({ ok: false, error: 'The PDFs are too large to email together. Download them instead.' });
+        const nm = String(x.name || 'Document.pdf').replace(/[\\\/:*?"<>|]/g, '').slice(0, 120);
+        opts.attachments.push(Utilities.newBlob(Utilities.base64Decode(x.base64), 'application/pdf', nm));
+      }
+    }
     const alias = prop_('FROM_ALIAS', '');
     if (alias && GmailApp.getAliases().indexOf(alias) >= 0) opts.from = alias;
 
@@ -88,7 +100,7 @@ function doPost(e) {
     const sent = GmailApp.createDraft(to.join(','), subject, body, opts).send();
     try { sent.moveToTrash(); } catch (x) {}
     try { sb_('/rest/v1/email_log', d.token, 'post', { company_id: ctx.company_id, user_id: user.id, to_addr: to.join(','), subject: subject }, true); } catch (x) {}
-    return json_({ ok: true });
+    return json_({ ok: true, attached: (opts.attachments || []).length });
   } catch (err) {
     return json_({ ok: false, error: String(err && err.message || err).replace(/^Error:\s*/, '') });
   }
