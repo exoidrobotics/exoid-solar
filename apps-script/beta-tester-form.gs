@@ -59,7 +59,7 @@ function unlinkResponsesSheet() {
 //   SEMAPHORE_SENDER   = your approved Semaphore sender name (optional; your default is used if blank)
 const SMS_TEMPLATE =
   'Hello {name},\n' +
-  'Thank you for registering for the ExoidSolar Beta Test. We have received your application and will email you shortly ' +
+  'Thank you for registering for the ExoidSolar Beta Test. We received your application and will email you soon ' +
   'to confirm your slot and schedule a Google Meet, where we will walk you through the software.\n\n' +
   'Best regards,\nExoid Team\n\n' +
   '*This is a system-generated text. Please do not reply.*';
