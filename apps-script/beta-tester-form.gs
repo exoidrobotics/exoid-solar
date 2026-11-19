@@ -59,9 +59,9 @@ function unlinkResponsesSheet() {
 //   SEMAPHORE_SENDER   = your approved Semaphore sender name (optional; your default is used if blank)
 const SMS_TEMPLATE =
   'Hello {name},\n' +
-  'Thank you for your interest in ExoidSolar Beta Phase Test. We have received your registration. ' +
-  'We will send an email to you soon for confirmation and schedule for a Google Meeting so we can introduce you the software. Best regards,\n\n' +
-  'Engr. Michelangelo Barroga\nManaging Director';
+  'Thank you for registering for the ExoidSolar Beta Test. We have received your application and will email you shortly ' +
+  'to confirm your slot and schedule a Google Meet, where we will walk you through the software.\n\n' +
+  'Best regards,\nEngr. Michelangelo Barroga\nManaging Director, Exoid Robotics';
 const SMS_COL = 16;   // column P in the Applicants sheet
 
 function firstName_(full) {
