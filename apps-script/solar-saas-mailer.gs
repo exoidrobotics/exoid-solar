@@ -83,8 +83,10 @@ function doPost(e) {
     const alias = prop_('FROM_ALIAS', '');
     if (alias && GmailApp.getAliases().indexOf(alias) >= 0) opts.from = alias;
 
-    // 4. Send and log (the log row also counts toward the daily limit)
-    GmailApp.sendEmail(to.join(','), subject, body, opts);
+    // 4. Send, then move this account's Sent copy to the trash so installers' client emails
+    //    don't pile up in your mailbox (the log row below still counts toward the daily limit)
+    const sent = GmailApp.createDraft(to.join(','), subject, body, opts).send();
+    try { sent.moveToTrash(); } catch (x) {}
     try { sb_('/rest/v1/email_log', d.token, 'post', { company_id: ctx.company_id, user_id: user.id, to_addr: to.join(','), subject: subject }, true); } catch (x) {}
     return json_({ ok: true });
   } catch (err) {
