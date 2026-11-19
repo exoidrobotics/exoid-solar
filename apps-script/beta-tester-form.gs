@@ -45,6 +45,79 @@ const HEADERS = ['Submitted', 'Company', 'Contact person', 'Email', 'Mobile', 'S
   'Province', 'City / municipality', 'Years in solar', 'Installs per year', 'Annual solar revenue',
   'Status', 'Notes', 'Response ID'];
 
+// Removes an extra "(Responses)" sheet link so personal data is kept in one place (the Applicants sheet)
+function unlinkResponsesSheet() {
+  const form = FormApp.openById(PropertiesService.getScriptProperties().getProperty('FORM_ID'));
+  try { Logger.log('Linked to: ' + form.getDestinationId()); } catch (e) { Logger.log('No linked sheet'); }
+  form.removeDestination();
+  Logger.log('Unlinked.');
+}
+
+// ---------- SMS acknowledgement via Semaphore (semaphore.co) ----------
+// Script Properties needed (Project Settings → Script properties):
+//   SEMAPHORE_API_KEY  = your Semaphore API key            (required)
+//   SEMAPHORE_SENDER   = your approved Semaphore sender name (optional; your default is used if blank)
+const SMS_TEMPLATE =
+  'Hello {name},\n' +
+  'Thank you for your interest in ExoidSolar Beta Phase Test. We have received your registration. ' +
+  'We will send an email to you soon for confirmation and schedule for a Google Meeting so we can introduce you the software. Best regards,\n\n' +
+  'Engr. Michelangelo Barroga\nManaging Director';
+const SMS_COL = 16;   // column P in the Applicants sheet
+
+function firstName_(full) {
+  const parts = String(full || '').trim().replace(/^(engr|arch|atty|dr|mr|mrs|ms|sir|ma'?am)\.?\s+/i, '').split(/\s+/);
+  const n = parts[0] || 'there';
+  // keep the SMS plain ASCII (accents like ñ switch it to Unicode, which costs more credits)
+  return n.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^\x20-\x7E]/g, '');
+}
+function phMobile_(raw) {
+  let d = String(raw || '').replace(/\D/g, '');
+  if (d.startsWith('63')) d = '0' + d.slice(2);
+  if (d.length === 10 && d.startsWith('9')) d = '0' + d;
+  return /^09\d{9}$/.test(d) ? d : '';
+}
+function sendSms_(mobile, text) {
+  const key = PropertiesService.getScriptProperties().getProperty('SEMAPHORE_API_KEY');
+  if (!key) return 'Not sent: SEMAPHORE_API_KEY is not set';
+  const num = phMobile_(mobile);
+  if (!num) return 'Not sent: invalid mobile number';
+  const payload = { apikey: key, number: num, message: text };
+  const sender = PropertiesService.getScriptProperties().getProperty('SEMAPHORE_SENDER');
+  if (sender) payload.sendername = sender;
+  try {
+    const res = UrlFetchApp.fetch('https://api.semaphore.co/api/v4/messages', { method: 'post', payload: payload, muteHttpExceptions: true });
+    const code = res.getResponseCode(), body = res.getContentText();
+    if (code >= 300) return 'Failed (' + code + '): ' + body.slice(0, 150);
+    let st = ''; try { const j = JSON.parse(body); st = (Array.isArray(j) ? j[0] : j).status || ''; } catch (e) {}
+    return (st || 'Sent') + ' ' + Utilities.formatDate(new Date(), 'Asia/Manila', 'yyyy-MM-dd HH:mm');
+  } catch (err) { return 'Failed: ' + err; }
+}
+function smsForRow_(sh, rowIndex) {
+  const r = sh.getRange(rowIndex, 1, 1, SMS_COL).getValues()[0];
+  const status = sendSms_(r[4], SMS_TEMPLATE.replace('{name}', firstName_(r[2])));
+  sh.getRange(rowIndex, SMS_COL).setValue(status);
+  return status;
+}
+function ensureSmsHeader_(sh) {
+  if (sh.getRange(1, SMS_COL).getValue() !== 'SMS') sh.getRange(1, SMS_COL).setValue('SMS').setFontWeight('bold').setBackground('#1D3B5C').setFontColor('#FFFFFF');
+}
+// Run by hand: texts every applicant whose SMS column is still empty (e.g. people who applied before SMS was set up)
+function sendSmsToPending() {
+  const sh = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SHEET_ID')).getSheetByName('Applicants');
+  ensureSmsHeader_(sh); let n = 0;
+  for (let i = 2; i <= sh.getLastRow(); i++) {
+    if (!sh.getRange(i, 2).getValue() || sh.getRange(i, SMS_COL).getValue()) continue;
+    Logger.log('Row ' + i + ': ' + smsForRow_(sh, i)); n++;
+  }
+  Logger.log(n + ' SMS attempted.');
+}
+// Run by hand to check the wording and your sender name: texts YOUR number only (set TEST_MOBILE in Script properties)
+function testSms() {
+  const to = PropertiesService.getScriptProperties().getProperty('TEST_MOBILE');
+  if (!to) throw new Error('Add a TEST_MOBILE script property with your own number first.');
+  Logger.log(sendSms_(to, SMS_TEMPLATE.replace('{name}', 'Michelangelo')));
+}
+
 function setupBetaForm() {
   const props = PropertiesService.getScriptProperties();
   if (props.getProperty('FORM_ID')) throw new Error('Already set up. Form: ' + FormApp.openById(props.getProperty('FORM_ID')).getPublishedUrl());
@@ -152,7 +225,9 @@ function onApplication(e) {
   const props = PropertiesService.getScriptProperties();
   const ss = SpreadsheetApp.openById(props.getProperty('SHEET_ID'));
   const row = readResponse_(e.response);
-  ss.getSheetByName('Applicants').appendRow(row);
+  const sh = ss.getSheetByName('Applicants');
+  sh.appendRow(row);
+  try { ensureSmsHeader_(sh); smsForRow_(sh, sh.getLastRow()); } catch (err) {}
   try {
     MailApp.sendEmail(Session.getEffectiveUser().getEmail(), 'New beta tester application: ' + row[1],
       'A new company applied for the Exoid Solar beta: ' + row[1] + '\n\nReview it in the Applicants sheet (team only):\n' + ss.getUrl());
