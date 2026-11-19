@@ -53,6 +53,41 @@ function unlinkResponsesSheet() {
   Logger.log('Unlinked.');
 }
 
+// ---------- Scheduling section (preferred date and time for the Google Meet) ----------
+const MEET_TITLE = 'Schedule your Google Meet';
+const MEET_Q = { date: 'Preferred date', time: 'Preferred time (Philippine time)', altDate: 'Alternative date (optional)', altTime: 'Alternative time (optional)' };
+const MEET_TIMES = ['9:00–10:00 AM', '10:00–11:00 AM', '11:00 AM–12:00 NN', '1:00–2:00 PM', '2:00–3:00 PM', '3:00–4:00 PM', '4:00–5:00 PM'];
+const MEET_COL = 17;   // columns Q–R in the Applicants sheet
+
+// Run ONCE: adds a final section, after the city question, asking when they'd like the onboarding call
+function addScheduleSection() {
+  const form = FormApp.openById(PropertiesService.getScriptProperties().getProperty('FORM_ID'));
+  const breaks = form.getItems(FormApp.ItemType.PAGE_BREAK).map(i => i.asPageBreakItem());
+  if (breaks.some(b => b.getTitle() === MEET_TITLE)) { Logger.log('Already added.'); return; }
+  const provincePages = breaks.filter(b => b.getTitle().indexOf('Office location') === 0);
+  const meet = form.addPageBreakItem().setTitle(MEET_TITLE)
+    .setHelpText('Pick a date and time for a short Google Meet (about 45 minutes) where we introduce the software. We\'ll confirm your slot by email.');
+  form.addDateItem().setTitle(MEET_Q.date).setRequired(true).setHelpText('Monday to Saturday');
+  form.addListItem().setTitle(MEET_Q.time).setChoiceValues(MEET_TIMES).setRequired(true);
+  form.addDateItem().setTitle(MEET_Q.altDate).setRequired(false);
+  form.addListItem().setTitle(MEET_Q.altTime).setChoiceValues(MEET_TIMES).setRequired(false);
+  // every province page now continues to this section instead of submitting
+  // (a page break's "go to" applies to the page just before it; the last province page flows here on its own)
+  for (let i = 1; i < provincePages.length; i++) provincePages[i].setGoToPage(meet);
+  meet.setGoToPage(FormApp.PageNavigationType.CONTINUE);
+  form.setConfirmationMessage('Thank you! We\'ll review the applications and confirm your Google Meet schedule by email. To withdraw your application or ask about your data, email ' + PRIVACY_EMAIL + '.');
+  const sh = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SHEET_ID')).getSheetByName('Applicants');
+  sh.getRange(1, MEET_COL, 1, 2).setValues([['Preferred meeting', 'Alternative']]).setFontWeight('bold').setBackground('#1D3B5C').setFontColor('#FFFFFF');
+  sh.setColumnWidth(MEET_COL, 220); sh.setColumnWidth(MEET_COL + 1, 220);
+  Logger.log('Scheduling section added after ' + provincePages.length + ' province pages.');
+}
+function meetingFor_(r) {
+  const v = {}; r.getItemResponses().forEach(ir => { v[ir.getItem().getTitle()] = ir.getResponse(); });
+  const fmt = d => { if (!d) return ''; const p = String(d).split('-'); return p.length === 3 ? Utilities.formatDate(new Date(+p[0], +p[1] - 1, +p[2]), 'Asia/Manila', 'EEE, MMM d, yyyy') : String(d); };
+  const join = (d, t) => [fmt(d), t || ''].filter(Boolean).join(', ');
+  return [join(v[MEET_Q.date], v[MEET_Q.time]), join(v[MEET_Q.altDate], v[MEET_Q.altTime])];
+}
+
 // ---------- SMS acknowledgement via Semaphore (semaphore.co) ----------
 // Script Properties needed (Project Settings → Script properties):
 //   SEMAPHORE_API_KEY  = your Semaphore API key            (required)
@@ -154,7 +189,7 @@ function setupBetaForm() {
   const form = FormApp.create('Exoid Solar beta tester application');
   form.setTitle('Exoid Solar — beta tester application')
       .setDescription('We\'re looking for 10 solar PV installer companies in the Philippines to beta test Exoid Solar, our system for sizing solar PV systems and making client proposals. Qualified beta testers receive a 1-month free trial, then 3 months of free use. It takes about 2 minutes.')
-      .setConfirmationMessage('Thank you! We\'ll review the applications and contact qualified companies by email or message. To withdraw your application or ask about your data, email ' + PRIVACY_EMAIL + '.')
+      .setConfirmationMessage('Thank you! We\'ll review the applications and confirm your Google Meet schedule by email. To withdraw your application or ask about your data, email ' + PRIVACY_EMAIL + '.')
       .setAllowResponseEdits(false)
       .setShowLinkToRespondAgain(false)
       .setPublishingSummary(false)
@@ -234,6 +269,7 @@ function onApplication(e) {
     if (ids.indexOf(row[14]) >= 0) return;
     sh.appendRow(row);
     const at = sh.getLastRow();
+    try { sh.getRange(at, MEET_COL, 1, 2).setValues([meetingFor_(e.response)]); } catch (err) {}
     try { ensureSmsHeader_(sh); smsForRow_(sh, at); } catch (err) {}
   } finally { lock.releaseLock(); }
   try {
@@ -252,9 +288,10 @@ function resyncApplicants() {
   if (last > 1) sh.getRange(2, 1, last - 1, SMS_COL).getValues().forEach(r => { old[r[14]] = [r[12], r[13], r[15]]; });
   const rows = form.getResponses().map(r => { const row = readResponse_(r); const o = old[row[14]];
     row.push(o ? o[2] : 'Not sent (added by resync)');   // never re-text on resync
+    meetingFor_(r).forEach(x => row.push(x));
     if (o) { row[12] = o[0]; row[13] = o[1]; } return row; });
-  if (last > 1) sh.getRange(2, 1, last - 1, SMS_COL).clearContent();
-  if (rows.length) sh.getRange(2, 1, rows.length, SMS_COL).setValues(rows);
+  if (last > 1) sh.getRange(2, 1, last - 1, MEET_COL + 1).clearContent();
+  if (rows.length) sh.getRange(2, 1, rows.length, MEET_COL + 1).setValues(rows);
   Logger.log(rows.length + ' applicants');
 }
 
