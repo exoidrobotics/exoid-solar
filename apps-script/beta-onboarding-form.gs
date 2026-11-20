@@ -18,7 +18,7 @@
 
 const ORG = 'Exoid Robotics Home Automation Services';
 const PRIVACY_EMAIL = 'mgb@exoidrobotics.com';
-const APP_URL = 'https://solar-app.mgb-bd8.workers.dev';
+const APP_URL = 'https://solar.exoidrobotics.com';
 const SUPPORT = 'mgb@exoidrobotics.com';
 
 const Q = {
